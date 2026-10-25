@@ -22,6 +22,18 @@ pnpm db:seed                  # prints a project API key once: mk_...
 pnpm dev                      # API on :3000 + delivery worker
 ```
 
+### Demos start from a reset database
+
+**Every demo must start from a fresh database.** A worker delivers whatever is pending, so
+rows left over from earlier experiments would be sent to their (possibly real, external)
+endpoint URLs as soon as the worker starts. Before a demo:
+
+```sh
+pnpm demo:reset   # docker compose down -v, infra up, migrate, seed (prints a new API key)
+```
+
+It refuses to run unless `MURPHY_MODE=local` is set and `DATABASE_URL` points to localhost.
+
 Create an endpoint, start the dev receiver with its secret, and send an event:
 
 ```sh

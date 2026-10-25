@@ -1,0 +1,19 @@
+{
+  "name": "@murphy/demo-reset",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Resets the local Murphy database for a clean demo (refuses outside local mode).",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@murphy/core": "workspace:*",
+    "dotenv": "^16.6.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0"
+  }
+}

@@ -129,6 +129,19 @@ importers:
 
   packages/simulator: {}
 
+  tools/demo-reset:
+    dependencies:
+      '@murphy/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      dotenv:
+        specifier: ^16.6.0
+        version: 16.6.1
+    devDependencies:
+      tsx:
+        specifier: ^4.20.0
+        version: 4.23.15
+
   tools/dev-receiver:
     dependencies:
       '@murphy/core':

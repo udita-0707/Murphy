@@ -38,6 +38,7 @@ packages/
   cli/          @murphy/cli, bin "murphy" (placeholder)
 tools/
   dev-receiver/ @murphy/dev-receiver: local receiver that verifies signatures, simulates failures
+  demo-reset/   @murphy/demo-reset: `pnpm demo:reset` (refuses outside local mode / localhost DB)
 infra/          docker-compose and other infrastructure
 docs/
   BRIEF.md      problem brief, PRD and tech spec
@@ -63,6 +64,7 @@ Run from the repo root.
 | `pnpm format`     | Prettier write                                                      |
 | `pnpm db:migrate` | Apply Prisma migrations (`prisma migrate deploy`) to `DATABASE_URL` |
 | `pnpm db:seed`    | Create a project and print its API key once                         |
+| `pnpm demo:reset` | Wipe and re-seed the local DB before every demo (local mode only)   |
 
 Copy `.env.example` to `.env` and fill it in (set a real `POSTGRES_PASSWORD` and use it in
 `DATABASE_URL`) before starting infra, the API or migrations.
