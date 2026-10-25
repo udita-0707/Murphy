@@ -1,5 +1,6 @@
 import { createDeliveryQueue, createPrismaClient } from "@murphy/db";
 import { loadEnvFile, loadWorkerConfig } from "./config.js";
+import { createDeliveryHandler } from "./deliver.js";
 import { Worker } from "./worker.js";
 
 loadEnvFile();
@@ -7,18 +8,28 @@ const config = loadWorkerConfig();
 const prisma = createPrismaClient(config.databaseUrl);
 const queue = createDeliveryQueue(prisma);
 
-// Delivery execution arrives in a later step; until then claimed rows are released untouched.
 const worker = new Worker({
   ...config,
   queue,
-  handler: async (delivery) => {
-    await new Promise((resolve) => setTimeout(resolve, config.pollMs));
-    await queue.releaseLeases(config.workerId, [delivery.id]);
-  },
+  handler: createDeliveryHandler({
+    queue,
+    workerId: config.workerId,
+    encryptionKey: config.encryptionKey,
+    mode: config.mode,
+    requestTimeoutMs: config.requestTimeoutMs,
+    onAttempt: (info) => console.log(JSON.stringify({ level: "info", msg: "attempt", ...info })),
+  }),
 });
 
 worker.start();
-console.log(JSON.stringify({ level: "info", msg: "worker started", worker_id: config.workerId }));
+console.log(
+  JSON.stringify({
+    level: "info",
+    msg: "worker started",
+    worker_id: config.workerId,
+    mode: config.mode,
+  }),
+);
 
 let stopping = false;
 async function shutdown(signal: string): Promise<void> {

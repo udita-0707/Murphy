@@ -1,6 +1,13 @@
 import type { LookupFunction } from "node:net";
 import { Agent, request } from "undici";
-import { type MurphyMode, type Resolver, safeTarget, SsrfError, systemResolver } from "./ssrf.js";
+import {
+  type MurphyMode,
+  type Resolver,
+  safeTarget,
+  SsrfError,
+  type SsrfReason,
+  systemResolver,
+} from "./ssrf.js";
 
 /** Only this much of the response body is read, then the stream is cancelled. */
 export const MAX_BODY_SNIPPET_BYTES = 1024;
@@ -29,6 +36,8 @@ export type SendResult =
       ok: false;
       kind: "ssrf_blocked" | "timeout" | "network" | "aborted";
       error: string;
+      /** Set for ssrf_blocked. */
+      ssrfReason?: SsrfReason;
       durationMs: number;
     };
 
@@ -50,6 +59,7 @@ export async function sendWebhook(input: SendInput): Promise<SendResult> {
         ok: false,
         kind: "ssrf_blocked",
         error: `${err.reason}: ${err.message}`,
+        ssrfReason: err.reason,
         durationMs: elapsed(),
       };
     }

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import type { DeliveryStatus } from "./types.js";
 
 /**
@@ -28,6 +28,53 @@ export interface ClaimedDelivery {
   lockedBy: string;
   lockedUntil: Date;
 }
+
+/** Everything the worker needs to send one attempt. */
+export interface DeliveryContext {
+  deliveryId: string;
+  projectId: string;
+  eventId: string;
+  eventType: string;
+  payload: unknown;
+  endpointId: string;
+  endpointUrl: string;
+  secretEnc: Buffer;
+  attemptCount: number;
+  clientErrorCount: number;
+}
+
+/** One logged attempt. request_headers include the signature but never the secret. */
+export interface AttemptLog {
+  startedAt: Date;
+  durationMs: number;
+  requestHeaders: Record<string, string>;
+  responseStatus: number | null;
+  responseBodySnippet: string | null;
+  error: string | null;
+}
+
+/** How the delivery row changes after an attempt. */
+export type AttemptOutcome =
+  | { kind: "succeeded"; attemptCount: number; clientErrorCount: number; lastStatusCode: number }
+  | {
+      kind: "retry";
+      attemptCount: number;
+      clientErrorCount: number;
+      delayMs: number;
+      lastStatusCode: number | null;
+      lastError: string | null;
+    }
+  | {
+      kind: "dead";
+      attemptCount: number;
+      clientErrorCount: number;
+      lastStatusCode: number | null;
+      lastError: string | null;
+      /** 410 Gone: also disable the endpoint so its other deliveries park. */
+      disableEndpoint: boolean;
+    }
+  /** No state change, e.g. the worker is shutting down and its lease is being released. */
+  | { kind: "none" };
 
 export function createDeliveryQueue(prisma: PrismaClient) {
   return {
@@ -85,6 +132,98 @@ export function createDeliveryQueue(prisma: PrismaClient) {
                   d.status::text AS "status", d.attempt_count AS "attemptCount",
                   d.next_attempt_at AS "nextAttemptAt", d.locked_by AS "lockedBy",
                   d.locked_until AS "lockedUntil"`;
+    },
+
+    /** Loads the event, endpoint and counters for a delivery leased to this worker. */
+    async loadContext(deliveryId: string, workerId: string): Promise<DeliveryContext | null> {
+      const rows = await prisma.$queryRaw<
+        (Omit<DeliveryContext, "secretEnc"> & { secretEnc: Uint8Array })[]
+      >`
+        SELECT d.id::text AS "deliveryId", d.project_id::text AS "projectId",
+               ev.id::text AS "eventId", ev.type AS "eventType", ev.payload AS "payload",
+               e.id::text AS "endpointId", e.url AS "endpointUrl", e.secret_enc AS "secretEnc",
+               d.attempt_count AS "attemptCount", d.client_error_count AS "clientErrorCount"
+        FROM deliveries d
+        JOIN events ev ON ev.id = d.event_id AND ev.project_id = d.project_id
+        JOIN endpoints e ON e.id = d.endpoint_id AND e.project_id = d.project_id
+        WHERE d.id = ${deliveryId}::uuid AND d.status = 'in_flight' AND d.locked_by = ${workerId}`;
+      const row = rows[0];
+      return row ? { ...row, secretEnc: Buffer.from(row.secretEnc) } : null;
+    },
+
+    /**
+     * Logs an attempt and applies its outcome in one transaction.
+     *
+     * attempt_no is the next number for this delivery and keeps increasing across retries,
+     * reaps and replays. The delivery update is guarded by status = 'in_flight' AND
+     * locked_by = workerId: if the delivery was cancelled (endpoint deleted, ADR 003) or its
+     * lease was reaped meanwhile, the attempt is still logged but the row is left alone.
+     * Returns whether the guarded update applied.
+     */
+    async recordAttempt(
+      deliveryId: string,
+      workerId: string,
+      attempt: AttemptLog,
+      outcome: AttemptOutcome,
+    ): Promise<{ applied: boolean; attemptNo: number }> {
+      return prisma.$transaction(async (tx) => {
+        // Serialises attempt numbering per delivery.
+        const locked = await tx.$queryRaw<{ project_id: string }[]>`
+          SELECT project_id::text FROM deliveries WHERE id = ${deliveryId}::uuid FOR UPDATE`;
+        const projectId = locked[0]?.project_id;
+        if (!projectId) return { applied: false, attemptNo: 0 };
+
+        const inserted = await tx.$queryRaw<{ attempt_no: number }[]>`
+          INSERT INTO delivery_attempts (delivery_id, project_id, attempt_no, started_at, duration_ms,
+                                         request_headers, response_status, response_body_snippet, error)
+          SELECT ${deliveryId}::uuid, ${projectId}::uuid, COALESCE(MAX(attempt_no), 0) + 1,
+                 ${attempt.startedAt}, ${attempt.durationMs},
+                 ${JSON.stringify(attempt.requestHeaders)}::jsonb, ${attempt.responseStatus},
+                 ${attempt.responseBodySnippet}, ${attempt.error}
+          FROM delivery_attempts WHERE delivery_id = ${deliveryId}::uuid
+          RETURNING attempt_no`;
+        const attemptNo = inserted[0]!.attempt_no;
+
+        if (outcome.kind === "none") return { applied: false, attemptNo };
+
+        const guard = Prisma.sql`id = ${deliveryId}::uuid AND status = 'in_flight' AND locked_by = ${workerId}`;
+        let updated: number;
+        switch (outcome.kind) {
+          case "succeeded":
+            updated = await tx.$executeRaw`
+              UPDATE deliveries SET status = 'succeeded', attempt_count = ${outcome.attemptCount},
+                client_error_count = ${outcome.clientErrorCount},
+                last_status_code = ${outcome.lastStatusCode}, last_error = NULL,
+                completed_at = now(), locked_by = NULL, locked_until = NULL
+              WHERE ${guard}`;
+            break;
+          case "retry":
+            updated = await tx.$executeRaw`
+              UPDATE deliveries SET status = 'pending', attempt_count = ${outcome.attemptCount},
+                client_error_count = ${outcome.clientErrorCount},
+                next_attempt_at = now() + make_interval(secs => ${outcome.delayMs / 1000}),
+                last_status_code = ${outcome.lastStatusCode}, last_error = ${outcome.lastError},
+                locked_by = NULL, locked_until = NULL
+              WHERE ${guard}`;
+            break;
+          case "dead":
+            updated = await tx.$executeRaw`
+              UPDATE deliveries SET status = 'dead', attempt_count = ${outcome.attemptCount},
+                client_error_count = ${outcome.clientErrorCount},
+                last_status_code = ${outcome.lastStatusCode}, last_error = ${outcome.lastError},
+                completed_at = now(), locked_by = NULL, locked_until = NULL
+              WHERE ${guard}`;
+            if (updated > 0 && outcome.disableEndpoint) {
+              await tx.$executeRaw`
+                UPDATE endpoints e SET status = 'disabled', disabled_at = now()
+                FROM deliveries d
+                WHERE d.id = ${deliveryId}::uuid AND e.id = d.endpoint_id
+                  AND e.project_id = d.project_id AND e.deleted_at IS NULL`;
+            }
+            break;
+        }
+        return { applied: updated > 0, attemptNo };
+      });
     },
 
     /**

@@ -135,19 +135,22 @@ model Event {
 
 /// Outbox: one row per (event, endpoint) delivery.
 model Delivery {
-  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  eventId        String         @map("event_id") @db.Uuid
-  endpointId     String         @map("endpoint_id") @db.Uuid
-  projectId      String         @map("project_id") @db.Uuid
-  status         DeliveryStatus @default(pending)
-  attemptCount   Int            @default(0) @map("attempt_count")
-  nextAttemptAt  DateTime       @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
-  lockedBy       String?        @map("locked_by")
-  lockedUntil    DateTime?      @map("locked_until") @db.Timestamptz(6)
-  lastStatusCode Int?           @map("last_status_code")
-  lastError      String?        @map("last_error")
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  completedAt    DateTime?      @map("completed_at") @db.Timestamptz(6)
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId          String         @map("event_id") @db.Uuid
+  endpointId       String         @map("endpoint_id") @db.Uuid
+  projectId        String         @map("project_id") @db.Uuid
+  status           DeliveryStatus @default(pending)
+  /// Real attempts since the last replay; drives the backoff schedule (reaps excluded).
+  attemptCount     Int            @default(0) @map("attempt_count")
+  /// 400/401/403/404 responses since the last replay; at most 2 are retried (ADR 006).
+  clientErrorCount Int            @default(0) @map("client_error_count")
+  nextAttemptAt    DateTime       @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lockedBy         String?        @map("locked_by")
+  lockedUntil      DateTime?      @map("locked_until") @db.Timestamptz(6)
+  lastStatusCode   Int?           @map("last_status_code")
+  lastError        String?        @map("last_error")
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt      DateTime?      @map("completed_at") @db.Timestamptz(6)
 
   project  Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   event    Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
