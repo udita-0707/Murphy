@@ -206,18 +206,59 @@ curl -s localhost:3000/v1/dlq -H "Authorization: Bearer $KEY"
 
 ## Open questions
 
-1. **Event type outside the payload?** Add a `webhook-event-type` header (small), or switch
-   to the Standard Webhooks envelope?
-2. **`localhost` and IPv6.** The connection is pinned to the first validated address. In the
-   check, an old endpoint registered as `http://localhost:4242/…` resolved to `::1` first and
-   got `ECONNREFUSED`, because the receiver listens on IPv4. Options: try each validated
-   address in turn, prefer IPv4 in local mode, or keep documenting `127.0.0.1`.
-3. **Validate URLs when an endpoint is created?** The API accepts any http(s) URL; blocked
-   targets are only caught at delivery time (and go `dead`). Rejecting `http://` and private
-   IP literals at create time in hosted mode would give faster feedback.
-4. **Retention job** (brief 3.3) is not built yet; attempts and soft-deleted endpoints
-   accumulate.
-5. **Redis** is still unused (rate limits and per-endpoint concurrency are phase 5).
+All five were decided on 2026-10-26; see "Decisions applied" below.
+
+## Decisions applied (2026-10-26, after phase 2 was pushed)
+
+Phase 2 (up to `e0bb3b6`) was pushed to `origin/main` first. The decisions below are new
+local commits on top, **not pushed**.
+
+| #   | Decision                                                                               | Commit    |
+| --- | -------------------------------------------------------------------------------------- | --------- |
+| 1   | `webhook-event-type` header on every delivery; payload stays raw                       | `9d2351f` |
+| 2   | Local mode pins IPv4 first, so `localhost` reaches IPv4-only receivers                 | `d32f61c` |
+| 3   | Hosted mode rejects unsafe endpoint URLs on create and on URL patch                    | `f7c9d1c` |
+| 4   | `pnpm demo:reset`, refusing outside local mode or a non-localhost DB; README demo rule | `77cbb64` |
+| 5   | Redis marked "default cut, final decision in phase 5"; retention deferred to phase 6   | `3fd59c6` |
+
+Details:
+
+1. **Event type header.** `webhook-event-type: <type>` is sent on every attempt and logged in
+   `delivery_attempts.request_headers`. It is not part of the signed content, which stays
+   `{id}.{timestamp}.{body}` per Standard Webhooks (README and ADR 006 say so). Tested in the
+   worker delivery tests (header received, logged, same on every retry).
+2. **IPv4 first in local mode.** After every resolved address passes the SSRF checks, local
+   mode pins the first IPv4 address (IPv6 if there is none); hosted mode keeps the resolver's
+   order. A mixed answer with any blocked address is still rejected as a whole. Tests: a fake
+   resolver returning `::1` then `127.0.0.1` reaches a server bound to 127.0.0.1 only, and the
+   real resolver does too (`localhost` resolves to `::1` first on this Mac, so this test
+   failed before the change). ADR 005 updated.
+3. **Create-time URL check.** In hosted mode (the API now reads `MURPHY_MODE`, default
+   hosted), `POST /v1/endpoints` and `PATCH` with a `url` return
+   `400 endpoint_url_not_allowed` for a non-https scheme, userinfo, a literal private,
+   loopback, link-local or metadata IP in any spelling (decimal, hex, octal, IPv4-mapped), and
+   `localhost` / `*.localhost`. Hostnames are not resolved, so `https://not-live-yet.invalid`
+   is accepted. Local mode keeps the phase 1 rule (http or https). The address rules moved
+   unchanged from the worker into `@murphy/core` (`isAddressAllowed`, `parseMode`, new
+   `checkEndpointUrl`) so the API and worker share them; the worker's SSRF suite still passes.
+   - Beyond the letter of the decision: `localhost` and `*.localhost` are rejected too. They
+     are names, not IP literals, but RFC 6761 reserves them for loopback, so hosted delivery
+     could never succeed.
+   - One phase 1 API test patched an endpoint to `http://localhost:3000/webhooks`; hosted is
+     the test default, so it now patches to an https URL.
+4. **`pnpm demo:reset`** (`tools/demo-reset`) runs `docker compose down -v`, infra up,
+   migrations and seed, stopping at the first failure. It refuses, changing nothing, unless
+   `MURPHY_MODE=local` is set explicitly and `DATABASE_URL` points to localhost, 127.0.0.1 or
+   ::1. Verified by hand: `MURPHY_MODE=hosted` and a remote `DATABASE_URL` both refuse with
+   exit 1 and leave the containers running; a real run wiped the local volume, applied all 5
+   migrations and seeded one project (0 endpoints, 0 deliveries). The README says every demo
+   starts from a reset database.
+5. **Redis and retention.** Docs only (README "Status and scope notes", CLAUDE.md). Redis stays
+   in compose, unused. No tests, since no code changed.
+
+Checks after these commits (uncached): `pnpm typecheck --force` 7/7 tasks, `pnpm lint`
+clean, `pnpm test --force` **353 passed, 0 failed** (core 95, api 81, worker 161,
+dev-receiver 10, demo-reset 6).
 
 ## Not done (by agreement)
 
