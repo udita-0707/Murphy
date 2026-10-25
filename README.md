@@ -16,7 +16,7 @@ Requirements: Node 20+, pnpm 10, Docker.
 pnpm install
 cp .env.example .env          # set POSTGRES_PASSWORD (and DATABASE_URL to match),
                               # MURPHY_ENCRYPTION_KEY=$(openssl rand -base64 32), MURPHY_MODE=local
-pnpm infra:up                 # Postgres 16 + Redis 7 on 127.0.0.1
+pnpm infra:up                 # Postgres 16 (+ Redis 7, not used yet) on 127.0.0.1
 pnpm db:migrate
 pnpm db:seed                  # prints a project API key once: mk_...
 pnpm dev                      # API on :3000 + delivery worker
@@ -104,6 +104,14 @@ development. Cloud metadata addresses are always blocked, DNS answers are pinned
 redirects are never followed. In hosted mode the API also rejects obviously unsafe endpoint
 URLs when they are created or changed (`400 endpoint_url_not_allowed`): non-https, credentials
 in the URL, literal private, loopback or metadata IPs, and `localhost`.
+
+## Status and scope notes
+
+- **Redis** is started by `pnpm infra:up` but not used by any code yet. It is a default cut;
+  the final decision (rate limits and per-endpoint concurrency, or drop it) is made in
+  phase 5.
+- **Retention** (deleting old attempts and payloads) is not built; it is planned for phase 6
+  only if time allows, so local data grows until you run `pnpm demo:reset`.
 
 ## Repository
 

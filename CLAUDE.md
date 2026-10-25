@@ -19,7 +19,8 @@ makes all final decisions.
 - pnpm workspaces + Turborepo
 - API: Express + Zod
 - Database: PostgreSQL 16 + Prisma (raw SQL only where needed, e.g. `ON CONFLICT`, `SKIP LOCKED`)
-- Redis 7 (rate limits and fairness only, never the source of truth)
+- Redis 7: started by compose but **unused by the code; default cut, final decision in phase 5**
+  (it would only hold rate limits and fairness counters, never the source of truth)
 - Tests: Vitest, Testcontainers (real Postgres), fast-check (property tests)
 - Local infra: Docker Compose (`infra/docker-compose.yml`)
 
@@ -93,5 +94,7 @@ Copy `.env.example` to `.env` and fill it in (set a real `POSTGRES_PASSWORD` and
 - Delivery is at-least-once; receivers deduplicate on `webhook-id` (ADR 001, 006, 007).
 - The partial index `deliveries_pending_project_due_idx` exists only in migrations; delete
   any `DROP INDEX` for it that `prisma migrate dev` generates (ADR 004).
+- Redis: default cut, final decision in phase 5. Do not remove it from compose or docs yet.
+- Retention job (brief 3.3): not built; phase 6 only if time allows.
 - Cut from v1: KYC provider, FIFO ordering (`endpoints.ordering`), endpoint auto-disable,
   hosted tunnel, Python SDK, docs site, Grafana, signing-secret rotation endpoint.
