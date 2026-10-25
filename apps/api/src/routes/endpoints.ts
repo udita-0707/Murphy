@@ -1,16 +1,22 @@
-import { encryptSecret, generateSigningSecret } from "@murphy/core";
+import {
+  checkEndpointUrl,
+  encryptSecret,
+  generateSigningSecret,
+  type MurphyMode,
+} from "@murphy/core";
 import type { Repository } from "@murphy/db";
 import { Router } from "express";
-import { notFound } from "../errors.js";
+import { ApiError, notFound } from "../errors.js";
 import { projectIdOf } from "../middleware/auth.js";
 import { serializeEndpoint } from "../serializers.js";
 import { createEndpointBody, parse, updateEndpointBody, uuidParam } from "../validation.js";
 
-export function endpointsRouter(repo: Repository, encryptionKey: Buffer): Router {
+export function endpointsRouter(repo: Repository, encryptionKey: Buffer, mode: MurphyMode): Router {
   const router = Router();
 
   router.post("/", async (req, res) => {
     const body = parse(createEndpointBody, req.body);
+    assertUrlAllowed(body.url, mode);
     const secret = generateSigningSecret();
     const endpoint = await repo.endpoints.create(projectIdOf(res), {
       url: body.url,
@@ -37,6 +43,7 @@ export function endpointsRouter(repo: Repository, encryptionKey: Buffer): Router
   router.patch("/:id", async (req, res) => {
     const { id } = parseId(req.params);
     const body = parse(updateEndpointBody, req.body);
+    if (body.url !== undefined) assertUrlAllowed(body.url, mode);
     const endpoint = await repo.endpoints.update(projectIdOf(res), id, {
       url: body.url,
       description: body.description,
@@ -55,6 +62,18 @@ export function endpointsRouter(repo: Repository, encryptionKey: Buffer): Router
   });
 
   return router;
+}
+
+/**
+ * Fast feedback on create and update (ADR 005): in hosted mode, rejects non-https URLs,
+ * userinfo, and literal private, loopback or metadata addresses. Hostnames are not resolved,
+ * so DNS that is not live yet does not block creation; delivery re-checks every attempt.
+ */
+function assertUrlAllowed(url: string, mode: MurphyMode): void {
+  const check = checkEndpointUrl(url, mode);
+  if (!check.ok) {
+    throw new ApiError(400, "endpoint_url_not_allowed", `${check.message} (${check.problem})`);
+  }
 }
 
 /** Malformed ids cannot exist, so they are a 404 rather than a validation error. */

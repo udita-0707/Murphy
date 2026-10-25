@@ -167,10 +167,10 @@ describe("endpoints", () => {
     const patched = await request(env.app)
       .patch(`/v1/endpoints/${id}`)
       .set(project.auth)
-      .send({ url: "http://localhost:3000/webhooks", status: "paused", event_filter: ["x.y"] });
+      .send({ url: "https://hooks.example.org/webhooks", status: "paused", event_filter: ["x.y"] });
     expect(patched.status).toBe(200);
     expect(patched.body).toMatchObject({
-      url: "http://localhost:3000/webhooks",
+      url: "https://hooks.example.org/webhooks",
       status: "paused",
       event_filter: ["x.y"],
     });

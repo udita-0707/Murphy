@@ -1,3 +1,4 @@
+import type { MurphyMode } from "@murphy/core";
 import type { Repository } from "@murphy/db";
 import express, { type ErrorRequestHandler, type Express } from "express";
 import { ApiError, type ErrorBody, notFound } from "./errors.js";
@@ -10,12 +11,19 @@ import { eventsRouter } from "./routes/events.js";
 export interface AppDeps {
   repo: Repository;
   encryptionKey: Buffer;
+  /** Endpoint URL rules on create and update (ADR 005). Defaults to hosted. */
+  mode?: MurphyMode;
   /** Called for unexpected (500) errors. Defaults to console.error. */
   logError?: (err: unknown, requestId: string) => void;
 }
 
 /** Builds the Express app without binding a port, so tests can drive it directly. */
-export function createApp({ repo, encryptionKey, logError = defaultLogError }: AppDeps): Express {
+export function createApp({
+  repo,
+  encryptionKey,
+  mode = "hosted",
+  logError = defaultLogError,
+}: AppDeps): Express {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", false);
@@ -29,7 +37,7 @@ export function createApp({ repo, encryptionKey, logError = defaultLogError }: A
 
   const v1 = express.Router();
   v1.use(authenticate(repo));
-  v1.use("/endpoints", endpointsRouter(repo, encryptionKey));
+  v1.use("/endpoints", endpointsRouter(repo, encryptionKey, mode));
   v1.use("/events", eventsRouter(repo));
   v1.use("/deliveries", deliveriesRouter(repo));
   v1.use("/replay", bulkReplayRouter(repo));

@@ -89,7 +89,9 @@ statuses, including redirects, are not retried.
 **Safety.** `MURPHY_MODE=hosted` (the default) only delivers to `https` URLs on public
 addresses. `MURPHY_MODE=local` also allows `http`, localhost and LAN addresses for
 development. Cloud metadata addresses are always blocked, DNS answers are pinned, and
-redirects are never followed.
+redirects are never followed. In hosted mode the API also rejects obviously unsafe endpoint
+URLs when they are created or changed (`400 endpoint_url_not_allowed`): non-https, credentials
+in the URL, literal private, loopback or metadata IPs, and `localhost`.
 
 ## Repository
 

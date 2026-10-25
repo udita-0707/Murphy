@@ -5,10 +5,14 @@ import { loadConfig, loadEnvFile } from "./config.js";
 loadEnvFile();
 const config = loadConfig();
 const prisma = createPrismaClient(config.databaseUrl);
-const app = createApp({ repo: createRepository(prisma), encryptionKey: config.encryptionKey });
+const app = createApp({
+  repo: createRepository(prisma),
+  encryptionKey: config.encryptionKey,
+  mode: config.mode,
+});
 
 const server = app.listen(config.port, () => {
-  console.log(`Murphy API listening on http://localhost:${config.port}`);
+  console.log(`Murphy API listening on http://localhost:${config.port} (${config.mode} mode)`);
 });
 
 function shutdown(): void {

@@ -2,9 +2,9 @@ import { hostname } from "node:os";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { parseEncryptionKey } from "@murphy/core";
+import { parseEncryptionKey, parseMode } from "@murphy/core";
 import { config as loadDotenv } from "dotenv";
-import type { MurphyMode } from "./net/ssrf.js";
+import type { MurphyMode } from "@murphy/core";
 
 /** The lease must outlast a request by at least this much, or a slow but healthy request
  * could be reaped and sent twice. */
@@ -75,13 +75,6 @@ export function assertLeaseOutlastsRequest(
         `(${config.requestTimeoutMs}) + ${LEASE_SAFETY_MARGIN_MS} ms safety margin = ${minimum} ms`,
     );
   }
-}
-
-/** MURPHY_MODE defaults to hosted, the safe choice; local must be asked for explicitly. */
-export function parseMode(raw: string | undefined): MurphyMode {
-  if (raw === undefined || raw === "") return "hosted";
-  if (raw === "hosted" || raw === "local") return raw;
-  throw new Error(`MURPHY_MODE must be "hosted" or "local", got "${raw}"`);
 }
 
 function intFromEnv(env: NodeJS.ProcessEnv, name: string, fallback: number, min: number): number {

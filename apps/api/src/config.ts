@@ -1,11 +1,13 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseEncryptionKey } from "@murphy/core";
+import { type MurphyMode, parseEncryptionKey, parseMode } from "@murphy/core";
 import { config as loadDotenv } from "dotenv";
 
 export interface Config {
   databaseUrl: string;
   encryptionKey: Buffer;
+  /** hosted (default) validates endpoint URLs strictly on create and update. */
+  mode: MurphyMode;
   port: number;
 }
 
@@ -26,6 +28,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     databaseUrl: env.DATABASE_URL,
     encryptionKey: parseEncryptionKey(env.MURPHY_ENCRYPTION_KEY),
+    mode: parseMode(env.MURPHY_MODE),
     port,
   };
 }

@@ -103,6 +103,10 @@ importers:
   packages/cli: {}
 
   packages/core:
+    dependencies:
+      ipaddr.js:
+        specifier: ^2.5.0
+        version: 2.5.0
     devDependencies:
       fast-check:
         specifier: ^4.3.0

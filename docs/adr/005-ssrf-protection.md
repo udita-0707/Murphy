@@ -18,7 +18,8 @@ Developers testing locally still need to deliver to `http://localhost:3000`.
 
 ## Decision
 
-`safeTarget(url, mode)` in `apps/worker/src/net/ssrf.ts` runs before every delivery attempt,
+`safeTarget(url, mode)` in `apps/worker/src/net/ssrf.ts` runs before every delivery attempt
+(address classification lives in `packages/core/src/address.ts`),
 and `sendWebhook` in `send.ts` sends the request.
 
 **Modes.** `MURPHY_MODE` is `hosted` (the default when unset) or `local`.
@@ -67,8 +68,13 @@ as a failed attempt. One total timeout (10 s) covers connecting, headers and bod
 - Receivers behind a redirect (for example http to https) must register the final URL.
 - Pinning uses one validated address (IPv4 first in local mode), so there is no fallback to a
   second address if it is unreachable. That is acceptable for webhooks, which are retried.
-- The API still accepts any http(s) URL when an endpoint is created. Rejecting obviously
-  blocked URLs at creation time would give faster feedback, and is a possible follow-up.
+- **Create-time check (decided 2026-10-26).** In hosted mode the API also rejects, when an
+  endpoint is created or its URL is patched, a non-https scheme, userinfo, a literal private,
+  loopback, link-local or metadata IP (in any spelling), and `localhost`/`*.localhost`, with
+  `400 endpoint_url_not_allowed`. It does not resolve DNS, so an endpoint whose DNS is not
+  live yet can still be registered; the delivery-time check stays the final authority. Local
+  mode keeps the phase 1 rule (http or https). The address rules live in `@murphy/core`
+  (`isAddressAllowed`, `checkEndpointUrl`), shared by the API and the worker.
 
 ## Alternatives considered
 

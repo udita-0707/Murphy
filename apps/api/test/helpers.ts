@@ -22,6 +22,7 @@ export interface TestEnv {
 
 /** Starts a real Postgres 16, applies the migrations and builds the app against it. */
 export async function startTestEnv(): Promise<TestEnv> {
+  // Hosted mode, the production default.
   const container = await new PostgreSqlContainer("postgres:16").start();
   const url = container.getConnectionUri();
   runMigrations(url);
