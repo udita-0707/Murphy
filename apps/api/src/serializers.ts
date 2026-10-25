@@ -1,4 +1,10 @@
-import type { DeliveryRecord, EndpointRecord, EventWithDeliveries } from "@murphy/db";
+import type {
+  DeliveryAttemptRecord,
+  DeliveryRecord,
+  DeliveryWithAttempts,
+  EndpointRecord,
+  EventWithDeliveries,
+} from "@murphy/db";
 
 export function serializeEndpoint(endpoint: EndpointRecord) {
   return {
@@ -14,6 +20,7 @@ export function serializeEndpoint(endpoint: EndpointRecord) {
 export function serializeDelivery(delivery: DeliveryRecord) {
   return {
     id: delivery.id,
+    event_id: delivery.eventId,
     endpoint_id: delivery.endpointId,
     status: delivery.status,
     attempt_count: delivery.attemptCount,
@@ -34,4 +41,21 @@ export function serializeEvent(event: EventWithDeliveries) {
     created_at: event.createdAt.toISOString(),
     deliveries: event.deliveries.map(serializeDelivery),
   };
+}
+
+export function serializeAttempt(attempt: DeliveryAttemptRecord) {
+  return {
+    id: attempt.id,
+    attempt_no: attempt.attemptNo,
+    started_at: attempt.startedAt.toISOString(),
+    duration_ms: attempt.durationMs,
+    request_headers: attempt.requestHeaders,
+    response_status: attempt.responseStatus,
+    response_body_snippet: attempt.responseBodySnippet,
+    error: attempt.error,
+  };
+}
+
+export function serializeDeliveryWithAttempts(delivery: DeliveryWithAttempts) {
+  return { ...serializeDelivery(delivery), attempts: delivery.attempts.map(serializeAttempt) };
 }

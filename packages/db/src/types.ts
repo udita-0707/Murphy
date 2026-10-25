@@ -59,11 +59,70 @@ export interface DeliveryRecord {
   projectId: string;
   status: DeliveryStatus;
   attemptCount: number;
+  clientErrorCount: number;
   nextAttemptAt: Date;
   lastStatusCode: number | null;
   lastError: string | null;
   createdAt: Date;
   completedAt: Date | null;
+}
+
+export interface DeliveryAttemptRecord {
+  id: string;
+  attemptNo: number;
+  startedAt: Date;
+  durationMs: number | null;
+  requestHeaders: JsonValue;
+  responseStatus: number | null;
+  responseBodySnippet: string | null;
+  error: string | null;
+}
+
+export interface DeliveryWithAttempts extends DeliveryRecord {
+  attempts: DeliveryAttemptRecord[];
+}
+
+/** Statuses a delivery can be replayed from. */
+export type ReplayableStatus = "succeeded" | "failed" | "dead";
+export const REPLAYABLE_STATUSES: readonly ReplayableStatus[] = ["succeeded", "failed", "dead"];
+
+/** Maximum deliveries replayed by one bulk call. */
+export const BULK_REPLAY_CAP = 1000;
+
+export interface DeliveryListFilter {
+  status?: DeliveryStatus;
+  endpointId?: string;
+  eventId?: string;
+  /** Page size, 1..100. */
+  limit: number;
+  /** Keyset cursor from a previous page. */
+  cursor?: DeliveryCursor;
+}
+
+/** Position after the last row of a page, ordered by (created_at, id) descending. */
+export interface DeliveryCursor {
+  createdAt: Date;
+  id: string;
+}
+
+export interface DeliveryPage {
+  data: DeliveryRecord[];
+  nextCursor: DeliveryCursor | null;
+}
+
+export type ReplayResult =
+  | { outcome: "replayed"; delivery: DeliveryRecord }
+  | { outcome: "not_found" }
+  | { outcome: "in_progress"; status: DeliveryStatus }
+  | { outcome: "endpoint_deleted" };
+
+export interface BulkReplayFilter {
+  statuses: readonly ReplayableStatus[];
+  endpointId?: string;
+  /** created_at >= from */
+  from?: Date;
+  /** created_at < to */
+  to?: Date;
 }
 
 export interface EventRecord {

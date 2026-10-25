@@ -2,6 +2,7 @@ export { createPrismaClient, type PrismaClient } from "./client.js";
 export { createRepository, type Repository } from "./repository.js";
 export { runMigrations } from "./migrate.js";
 export type * from "./types.js";
+export { BULK_REPLAY_CAP, REPLAYABLE_STATUSES } from "./types.js";
 export {
   createDeliveryQueue,
   type AttemptLog,

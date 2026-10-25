@@ -1,16 +1,22 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
-import type {
-  AcceptEventInput,
-  AcceptEventResult,
-  ApiKeyRecord,
-  CreateEndpointInput,
-  DeliveryRecord,
-  EndpointRecord,
-  EventWithDeliveries,
-  JsonValue,
-  ProjectPlan,
-  ProjectRecord,
-  UpdateEndpointInput,
+import { Prisma, type PrismaClient } from "@prisma/client";
+import {
+  BULK_REPLAY_CAP,
+  type AcceptEventInput,
+  type AcceptEventResult,
+  type ApiKeyRecord,
+  type BulkReplayFilter,
+  type CreateEndpointInput,
+  type DeliveryListFilter,
+  type DeliveryPage,
+  type DeliveryRecord,
+  type DeliveryWithAttempts,
+  type EndpointRecord,
+  type EventWithDeliveries,
+  type JsonValue,
+  type ProjectPlan,
+  type ProjectRecord,
+  type ReplayResult,
+  type UpdateEndpointInput,
 } from "./types.js";
 
 const endpointSelect = {
@@ -32,6 +38,7 @@ const deliverySelect = {
   projectId: true,
   status: true,
   attemptCount: true,
+  clientErrorCount: true,
   nextAttemptAt: true,
   lastStatusCode: true,
   lastError: true,
@@ -139,6 +146,122 @@ export function createRepository(prisma: PrismaClient) {
       },
     },
 
+    deliveries: {
+      /** Newest first, keyset-paginated on (created_at, id). */
+      async list(projectId: string, filter: DeliveryListFilter): Promise<DeliveryPage> {
+        const where: Prisma.DeliveryWhereInput = {
+          projectId,
+          ...(filter.status ? { status: filter.status } : {}),
+          ...(filter.endpointId ? { endpointId: filter.endpointId } : {}),
+          ...(filter.eventId ? { eventId: filter.eventId } : {}),
+          ...(filter.cursor
+            ? {
+                OR: [
+                  { createdAt: { lt: filter.cursor.createdAt } },
+                  { createdAt: filter.cursor.createdAt, id: { lt: filter.cursor.id } },
+                ],
+              }
+            : {}),
+        };
+        const rows = await prisma.delivery.findMany({
+          where,
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: filter.limit + 1,
+          select: deliverySelect,
+        });
+        const data = rows.slice(0, filter.limit);
+        const last = data[data.length - 1];
+        return {
+          data,
+          nextCursor:
+            rows.length > filter.limit && last ? { createdAt: last.createdAt, id: last.id } : null,
+        };
+      },
+
+      async get(projectId: string, id: string): Promise<DeliveryWithAttempts | null> {
+        const row = await prisma.delivery.findFirst({
+          where: { id, projectId },
+          select: {
+            ...deliverySelect,
+            attempts: {
+              where: { projectId },
+              orderBy: { attemptNo: "asc" },
+              select: {
+                id: true,
+                attemptNo: true,
+                startedAt: true,
+                durationMs: true,
+                requestHeaders: true,
+                responseStatus: true,
+                responseBodySnippet: true,
+                error: true,
+              },
+            },
+          },
+        });
+        if (!row) return null;
+        return {
+          ...row,
+          attempts: row.attempts.map((a) => ({
+            ...a,
+            requestHeaders: a.requestHeaders as JsonValue,
+          })),
+        };
+      },
+
+      /**
+       * Replays one finished delivery (succeeded, failed or dead): back to pending, due now,
+       * with the backoff, client-error and reap counters reset (ADR 006). attempt_no in the
+       * log keeps increasing. Cancelled deliveries and deliveries of deleted endpoints cannot
+       * be replayed.
+       */
+      async replay(projectId: string, id: string): Promise<ReplayResult> {
+        const updated = await prisma.$executeRaw`
+          UPDATE deliveries d SET ${replayAssignments}
+          FROM endpoints e
+          WHERE d.id = ${id}::uuid AND d.project_id = ${projectId}::uuid
+            AND e.id = d.endpoint_id AND e.project_id = d.project_id AND e.deleted_at IS NULL
+            AND d.status IN ('succeeded', 'failed', 'dead')`;
+        const row = await prisma.delivery.findFirst({
+          where: { id, projectId },
+          select: { ...deliverySelect, endpoint: { select: { deletedAt: true } } },
+        });
+        if (!row) return { outcome: "not_found" };
+        const { endpoint, ...delivery } = row;
+        if (updated > 0) return { outcome: "replayed", delivery };
+        if (row.status === "cancelled" || endpoint.deletedAt)
+          return { outcome: "endpoint_deleted" };
+        return { outcome: "in_progress", status: row.status };
+      },
+
+      /**
+       * Replays up to BULK_REPLAY_CAP finished deliveries matching the filter, oldest first.
+       * Deliveries of deleted endpoints are skipped. Returns how many were replayed.
+       */
+      async bulkReplay(projectId: string, filter: BulkReplayFilter): Promise<number> {
+        if (filter.statuses.length === 0) return 0;
+        const statuses = Prisma.join(filter.statuses.map((s) => Prisma.sql`${s}::delivery_status`));
+        const conditions = [
+          Prisma.sql`d.project_id = ${projectId}::uuid`,
+          Prisma.sql`d.status IN (${statuses})`,
+          Prisma.sql`e.deleted_at IS NULL`,
+          ...(filter.endpointId ? [Prisma.sql`d.endpoint_id = ${filter.endpointId}::uuid`] : []),
+          ...(filter.from ? [Prisma.sql`d.created_at >= ${filter.from}`] : []),
+          ...(filter.to ? [Prisma.sql`d.created_at < ${filter.to}`] : []),
+        ];
+        return prisma.$executeRaw`
+          UPDATE deliveries d SET ${replayAssignments}
+          WHERE d.id IN (
+            SELECT d.id FROM deliveries d
+            JOIN endpoints e ON e.id = d.endpoint_id AND e.project_id = d.project_id
+            WHERE ${Prisma.join(conditions, " AND ")}
+            ORDER BY d.created_at, d.id
+            LIMIT ${BULK_REPLAY_CAP}
+            FOR UPDATE OF d SKIP LOCKED
+          )`;
+      },
+    },
+
     events: {
       /**
        * Accepts an event idempotently, in one transaction (ADR 001, ADR 002).
@@ -218,6 +341,11 @@ export function createRepository(prisma: PrismaClient) {
 }
 
 export type Repository = ReturnType<typeof createRepository>;
+
+/** Column updates shared by single and bulk replay. */
+const replayAssignments = Prisma.sql`
+  status = 'pending', next_attempt_at = now(), attempt_count = 0, client_error_count = 0,
+  reap_count = 0, completed_at = NULL, locked_by = NULL, locked_until = NULL`;
 
 function toApiKey(row: {
   id: string;

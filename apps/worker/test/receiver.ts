@@ -18,7 +18,14 @@ export class StubReceiver {
   private server: Server | null = null;
   url = "";
 
-  constructor(private readonly secret: string) {}
+  /**
+   * @param clock When given, signatures are verified at this time (unix seconds) with the
+   *   standard 5-minute tolerance, like a real receiver. Otherwise the tolerance is ignored.
+   */
+  constructor(
+    private readonly secret: string,
+    private readonly clock?: () => number,
+  ) {}
 
   /** Replies for the next requests, in order; afterwards the fallback (200 "ok") is used. */
   script(...replies: Reply[]): void {
@@ -41,7 +48,7 @@ export class StubReceiver {
           signature: req.headers["webhook-signature"] as string | undefined,
           body,
           secret: this.secret,
-          toleranceSeconds: 10 * 365 * 24 * 3600, // tests may use a fake clock
+          ...(this.clock ? { now: this.clock() } : { toleranceSeconds: 10 * 365 * 24 * 3600 }),
         });
         this.received.push({ headers: req.headers, body, valid: result.valid });
         (this.replies.shift() ?? this.fallback)(req, res);

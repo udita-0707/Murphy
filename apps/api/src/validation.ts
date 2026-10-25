@@ -60,3 +60,56 @@ export const idempotencyKey = z
   .min(1)
   .max(255)
   .regex(/^[\x21-\x7e]+$/, "must be printable ASCII without spaces");
+
+const deliveryStatus = z.enum(["pending", "in_flight", "succeeded", "failed", "dead", "cancelled"]);
+const replayableStatus = z.enum(["succeeded", "failed", "dead"]);
+
+/** Opaque keyset cursor: base64url of JSON [created_at ISO, id]. */
+export function encodeCursor(cursor: { createdAt: Date; id: string }): string {
+  return Buffer.from(JSON.stringify([cursor.createdAt.toISOString(), cursor.id])).toString(
+    "base64url",
+  );
+}
+
+const cursorParam = z.string().transform((value, ctx) => {
+  try {
+    const decoded: unknown = JSON.parse(Buffer.from(value, "base64url").toString("utf8"));
+    const parsed = z.tuple([z.iso.datetime(), z.uuid()]).parse(decoded);
+    return { createdAt: new Date(parsed[0]), id: parsed[1] };
+  } catch {
+    ctx.addIssue({ code: "custom", message: "invalid cursor" });
+    return z.NEVER;
+  }
+});
+
+const limitParam = z.coerce.number().int().min(1).max(100).default(50);
+
+export const listDeliveriesQuery = z.strictObject({
+  status: deliveryStatus.optional(),
+  endpoint_id: z.uuid().optional(),
+  event_id: z.uuid().optional(),
+  limit: limitParam,
+  cursor: cursorParam.optional(),
+});
+
+export const listDlqQuery = z.strictObject({
+  endpoint_id: z.uuid().optional(),
+  limit: limitParam,
+  cursor: cursorParam.optional(),
+});
+
+export const bulkReplayBody = z
+  .strictObject({
+    status: z.union([replayableStatus, z.array(replayableStatus).min(1)]).default("dead"),
+    endpoint_id: z.uuid().optional(),
+    from: z.iso.datetime({ offset: true }).optional(),
+    to: z.iso.datetime({ offset: true }).optional(),
+  })
+  .refine(
+    (b) => !b.from || !b.to || Date.parse(b.from) < Date.parse(b.to),
+    "from must be before to",
+  );
+
+export const dlqRetryBody = z.strictObject({
+  endpoint_id: z.uuid().optional(),
+});

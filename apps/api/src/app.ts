@@ -3,6 +3,7 @@ import express, { type ErrorRequestHandler, type Express } from "express";
 import { ApiError, type ErrorBody, notFound } from "./errors.js";
 import { authenticate } from "./middleware/auth.js";
 import { getRequestId, requestId } from "./middleware/request-id.js";
+import { bulkReplayRouter, deliveriesRouter, dlqRouter } from "./routes/deliveries.js";
 import { endpointsRouter } from "./routes/endpoints.js";
 import { eventsRouter } from "./routes/events.js";
 
@@ -30,6 +31,9 @@ export function createApp({ repo, encryptionKey, logError = defaultLogError }: A
   v1.use(authenticate(repo));
   v1.use("/endpoints", endpointsRouter(repo, encryptionKey));
   v1.use("/events", eventsRouter(repo));
+  v1.use("/deliveries", deliveriesRouter(repo));
+  v1.use("/replay", bulkReplayRouter(repo));
+  v1.use("/dlq", dlqRouter(repo));
   app.use("/v1", v1);
 
   app.use((_req, _res, next) => {
