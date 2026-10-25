@@ -3,5 +3,20 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Murphy dispatcher and delivery workers (phase 2)."
+  "description": "Murphy dispatcher and delivery workers.",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@murphy/core": "workspace:*",
+    "@murphy/db": "workspace:*",
+    "dotenv": "^16.6.0"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^11.7.0",
+    "tsx": "^4.20.0"
+  }
 }
