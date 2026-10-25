@@ -76,6 +76,15 @@ export type AttemptOutcome =
   /** No state change, e.g. the worker is shutting down and its lease is being released. */
   | { kind: "none" };
 
+export interface ReapedDelivery {
+  id: string;
+  projectId: string;
+  previousWorker: string | null;
+  reapCount: number;
+  /** pending: due now, not counted. retry: counted, backed off. dead: counted, exhausted. */
+  outcome: "pending" | "retry" | "dead";
+}
+
 export function createDeliveryQueue(prisma: PrismaClient) {
   return {
     /**
@@ -223,6 +232,84 @@ export function createDeliveryQueue(prisma: PrismaClient) {
             break;
         }
         return { applied: updated > 0, attemptNo };
+      });
+    },
+
+    /**
+     * Returns deliveries whose lease has expired (their worker died or hung) to pending, due
+     * immediately. Expired rows are locked with SKIP LOCKED, so several reapers can run at
+     * once without reaping a row twice.
+     *
+     * Each reap is logged as an attempt row with error 'lease_expired'. Reaps do not count
+     * toward attempt_count, except under the poison guard (ADR 007): from the
+     * (freeReaps + 1)-th reap of the same delivery on, a reap counts as an attempt and
+     * follows the backoff schedule given by `retryDelay`, going dead when it returns null.
+     */
+    async reapExpired(options: {
+      limit: number;
+      freeReaps: number;
+      /** Backoff after the attempt numbered `attemptCount` failed; null means exhausted. */
+      retryDelay: (attemptCount: number) => number | null;
+    }): Promise<ReapedDelivery[]> {
+      return prisma.$transaction(async (tx) => {
+        const expired = await tx.$queryRaw<
+          {
+            id: string;
+            project_id: string;
+            attempt_count: number;
+            reap_count: number;
+            locked_by: string | null;
+          }[]
+        >`
+          SELECT id::text, project_id::text, attempt_count, reap_count, locked_by
+          FROM deliveries
+          WHERE status = 'in_flight' AND locked_until < now()
+          ORDER BY locked_until
+          LIMIT ${options.limit}
+          FOR UPDATE SKIP LOCKED`;
+
+        const reaped: ReapedDelivery[] = [];
+        for (const row of expired) {
+          const reapCount = row.reap_count + 1;
+          const counted = reapCount > options.freeReaps;
+          const attemptCount = counted ? row.attempt_count + 1 : row.attempt_count;
+          const delayMs = counted ? options.retryDelay(attemptCount) : 0;
+          const outcome: ReapedDelivery["outcome"] =
+            delayMs === null ? "dead" : counted ? "retry" : "pending";
+          const error = counted
+            ? `lease_expired: reaped ${reapCount} times, counted as attempt ${attemptCount}`
+            : "lease_expired";
+
+          await tx.$executeRaw`
+            INSERT INTO delivery_attempts (delivery_id, project_id, attempt_no, started_at,
+                                           request_headers, error)
+            SELECT ${row.id}::uuid, ${row.project_id}::uuid, COALESCE(MAX(attempt_no), 0) + 1,
+                   now(), ${JSON.stringify({ "x-murphy-worker": row.locked_by ?? "" })}::jsonb, ${error}
+            FROM delivery_attempts WHERE delivery_id = ${row.id}::uuid`;
+
+          if (outcome === "dead") {
+            await tx.$executeRaw`
+              UPDATE deliveries SET status = 'dead', reap_count = ${reapCount},
+                attempt_count = ${attemptCount}, last_status_code = NULL, last_error = ${error},
+                completed_at = now(), locked_by = NULL, locked_until = NULL
+              WHERE id = ${row.id}::uuid`;
+          } else {
+            await tx.$executeRaw`
+              UPDATE deliveries SET status = 'pending', reap_count = ${reapCount},
+                attempt_count = ${attemptCount}, last_error = ${error},
+                next_attempt_at = now() + make_interval(secs => ${(delayMs ?? 0) / 1000}),
+                locked_by = NULL, locked_until = NULL
+              WHERE id = ${row.id}::uuid`;
+          }
+          reaped.push({
+            id: row.id,
+            projectId: row.project_id,
+            previousWorker: row.locked_by,
+            reapCount,
+            outcome,
+          });
+        }
+        return reaped;
       });
     },
 

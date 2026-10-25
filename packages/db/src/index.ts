@@ -10,4 +10,5 @@ export {
   type DeliveryContext,
   type ClaimOptions,
   type DeliveryQueue,
+  type ReapedDelivery,
 } from "./queue.js";

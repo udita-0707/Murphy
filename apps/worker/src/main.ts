@@ -1,6 +1,7 @@
 import { createDeliveryQueue, createPrismaClient } from "@murphy/db";
 import { loadEnvFile, loadWorkerConfig } from "./config.js";
 import { createDeliveryHandler } from "./deliver.js";
+import { startReaper } from "./reaper.js";
 import { Worker } from "./worker.js";
 
 loadEnvFile();
@@ -22,6 +23,14 @@ const worker = new Worker({
 });
 
 worker.start();
+const stopReaper = startReaper({
+  queue,
+  intervalMs: config.reapIntervalMs,
+  onReap: (reaped) =>
+    console.log(JSON.stringify({ level: "warn", msg: "reaped expired leases", reaped })),
+  onError: (err) =>
+    console.error(JSON.stringify({ level: "error", context: "reaper", err: String(err) })),
+});
 console.log(
   JSON.stringify({
     level: "info",
@@ -36,6 +45,7 @@ async function shutdown(signal: string): Promise<void> {
   if (stopping) return;
   stopping = true;
   console.log(JSON.stringify({ level: "info", msg: "shutting down", signal }));
+  await stopReaper();
   const released = await worker.stop(config.shutdownTimeoutMs);
   console.log(JSON.stringify({ level: "info", msg: "stopped", released_leases: released }));
   await prisma.$disconnect();

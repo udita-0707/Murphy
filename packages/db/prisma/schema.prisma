@@ -144,6 +144,9 @@ model Delivery {
   attemptCount     Int            @default(0) @map("attempt_count")
   /// 400/401/403/404 responses since the last replay; at most 2 are retried (ADR 006).
   clientErrorCount Int            @default(0) @map("client_error_count")
+  /// Expired leases returned by the reaper since the last replay; the 4th and later count
+  /// as attempts (poison guard, ADR 007).
+  reapCount        Int            @default(0) @map("reap_count")
   nextAttemptAt    DateTime       @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
   lockedBy         String?        @map("locked_by")
   lockedUntil      DateTime?      @map("locked_until") @db.Timestamptz(6)

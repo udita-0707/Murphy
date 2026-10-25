@@ -26,6 +26,8 @@ export interface WorkerConfig {
   pollMs: number;
   leaseMs: number;
   requestTimeoutMs: number;
+  /** How often this worker looks for expired leases. */
+  reapIntervalMs: number;
   /** How long graceful shutdown waits for in-flight deliveries before releasing them. */
   shutdownTimeoutMs: number;
 }
@@ -56,6 +58,7 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv = process.env): WorkerCo
     leaseMs: intFromEnv(env, "WORKER_LEASE_MS", 60_000, 1_000),
     requestTimeoutMs: intFromEnv(env, "WORKER_REQUEST_TIMEOUT_MS", 10_000, 100),
     shutdownTimeoutMs: intFromEnv(env, "WORKER_SHUTDOWN_TIMEOUT_MS", 15_000, 0),
+    reapIntervalMs: intFromEnv(env, "WORKER_REAP_INTERVAL_MS", 10_000, 100),
   };
   assertLeaseOutlastsRequest(config);
   return config;
