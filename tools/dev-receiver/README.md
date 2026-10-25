@@ -5,9 +5,10 @@ Standard Webhooks signature with your endpoint secret, logs it as valid or inval
 repeated `webhook-id`s as duplicates, and can simulate failures.
 
 ```sh
-pnpm receiver --secret whsec_... --port 4242
-pnpm receiver --secret whsec_... --fail 3 --status 503 --retry-after 5
-pnpm receiver --secret whsec_... --delay-ms 8000
+export RECEIVER_SECRET=whsec_...   # preferred over --secret, which shows up in process lists and pnpm's output
+pnpm receiver --port 4242
+pnpm receiver --fail 3 --status 503 --retry-after 5
+pnpm receiver --delay-ms 8000
 ```
 
 Register `http://127.0.0.1:4242/webhooks` as an endpoint (the worker needs `MURPHY_MODE=local`

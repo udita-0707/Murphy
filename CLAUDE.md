@@ -28,18 +28,21 @@ makes all final decisions.
 ```
 apps/
   api/          Express API (@murphy/api)
-  worker/       dispatcher and delivery workers (phase 2, placeholder)
+  worker/       delivery worker: fair claim, SSRF guard, retries, reaper (@murphy/worker)
   dashboard/    Next.js dashboard (placeholder)
 packages/
   core/         @murphy/core: signing, retry policy, canonical JSON hashing
-  db/           @murphy/db: Prisma schema, migrations, client, repository layer
+  db/           @murphy/db: Prisma schema, migrations, client, repository layer, delivery queue
   simulator/    @murphy/simulator (placeholder)
   sdk/          @murphy/sdk (placeholder)
   cli/          @murphy/cli, bin "murphy" (placeholder)
+tools/
+  dev-receiver/ @murphy/dev-receiver: local receiver that verifies signatures, simulates failures
 infra/          docker-compose and other infrastructure
 docs/
   BRIEF.md      problem brief, PRD and tech spec
   adr/          architecture decision records
+  handover/     phase handover notes
 ```
 
 ## Commands
@@ -51,7 +54,8 @@ Run from the repo root.
 | `pnpm install`    | Install dependencies                                                |
 | `pnpm infra:up`   | Start Postgres 16 and Redis 7 (reads credentials from `.env`)       |
 | `pnpm infra:down` | Stop them (data stays in the `murphy-pgdata` volume)                |
-| `pnpm dev`        | Run all apps in watch mode (API on `PORT`, default 3000)            |
+| `pnpm dev`        | Run the API (on `PORT`, default 3000) and the worker in watch mode  |
+| `pnpm receiver`   | Dev receiver on :4242 (`RECEIVER_SECRET=whsec_...`, `--fail N`)     |
 | `pnpm build`      | Build all packages                                                  |
 | `pnpm test`       | Run all tests (integration tests need Docker for Testcontainers)    |
 | `pnpm lint`       | ESLint across the workspace                                         |
@@ -81,7 +85,11 @@ Copy `.env.example` to `.env` and fill it in (set a real `POSTGRES_PASSWORD` and
 
 ## Scope notes
 
-- Phase 1: API, core, db only. Worker, retries execution, DLQ, SSRF and outbound HTTP are
-  phase 2.
+- Phase 1 (done): API, core, db. Phase 2 (done): worker, retries, reaper, DLQ, replay, SSRF
+  guard, dev receiver. Phase 3 is the simulator.
+- `MURPHY_MODE` must default to `hosted`. Local development sets `MURPHY_MODE=local` in `.env`.
+- Delivery is at-least-once; receivers deduplicate on `webhook-id` (ADR 001, 006, 007).
+- The partial index `deliveries_pending_project_due_idx` exists only in migrations; delete
+  any `DROP INDEX` for it that `prisma migrate dev` generates (ADR 004).
 - Cut from v1: KYC provider, FIFO ordering (`endpoints.ordering`), endpoint auto-disable,
-  hosted tunnel, Python SDK, docs site, Grafana.
+  hosted tunnel, Python SDK, docs site, Grafana, signing-secret rotation endpoint.

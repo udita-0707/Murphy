@@ -38,6 +38,14 @@ Use PostgreSQL itself as the durable queue (a transactional outbox).
   `(status, next_attempt_at)` index, and vacuum must keep up. This is fine for the target of
   500 events/s on one instance but would become a bottleneck at much higher volumes.
 - The claim query needs raw SQL because Prisma cannot express `SKIP LOCKED`.
+- **Delivery is at-least-once, so receivers can see duplicates.** The main case: a worker
+  sends a delivery, the receiver returns 2xx, and the worker dies (SIGKILL, OOM, VM loss)
+  before it records the result. The delivery's lease expires, the reaper returns it to
+  `pending` (ADR 007), and another worker sends it again with the same `webhook-id`. Retries
+  after a timeout and user-triggered replays produce duplicates too. Exactly-once delivery
+  over HTTP is not achievable, so receivers must deduplicate on `webhook-id` (ADR 006). This
+  is documented in the README. It was observed in the phase 2 end-to-end check: a worker was
+  killed mid-request and the dev receiver logged the redelivery as a duplicate.
 
 ## Alternatives considered
 
