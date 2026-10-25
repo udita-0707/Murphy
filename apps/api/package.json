@@ -5,17 +5,18 @@
   "type": "module",
   "description": "Murphy REST API.",
   "scripts": {
-    "dev": "tsx watch --env-file-if-exists=../../.env src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "db:seed": "tsx --env-file-if-exists=../../.env src/seed.ts"
+    "db:seed": "tsx src/seed.ts"
   },
   "dependencies": {
     "@murphy/core": "workspace:*",
     "@murphy/db": "workspace:*",
     "express": "^5.1.0",
-    "zod": "^4.1.0"
+    "zod": "^4.1.0",
+    "dotenv": "^16.6.0"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^11.7.0",
