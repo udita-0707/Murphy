@@ -1,5 +1,5 @@
 # Local infrastructure for Murphy.
-# Host ports default to 55432/56379 so they do not clash with a locally installed
+# Host ports default to 54320/56379 so they do not clash with a locally installed
 # Postgres or Redis; override with MURPHY_PG_PORT / MURPHY_REDIS_PORT.
 name: murphy
 
@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: murphy
       POSTGRES_DB: murphy
     ports:
-      - "${MURPHY_PG_PORT:-55432}:5432"
+      - "${MURPHY_PG_PORT:-54320}:5432"
     volumes:
       - murphy-pgdata:/var/lib/postgresql/data
     healthcheck:
