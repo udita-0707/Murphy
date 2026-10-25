@@ -1,0 +1,237 @@
+// Murphy data model (brief section 3.3).
+// Every tenant-owned table carries project_id. Access goes through the repository layer
+// in src/, never through Prisma directly from route handlers.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectPlan {
+  free
+  edu
+
+  @@map("project_plan")
+}
+
+enum EndpointStatus {
+  active
+  disabled
+  paused
+
+  @@map("endpoint_status")
+}
+
+enum DeliveryStatus {
+  pending
+  in_flight
+  succeeded
+  failed
+  dead
+
+  @@map("delivery_status")
+}
+
+enum ScenarioDifficulty {
+  beginner
+  intermediate
+  advanced
+
+  @@map("scenario_difficulty")
+}
+
+enum ScenarioRunStatus {
+  pending
+  running
+  passed
+  failed
+  errored
+
+  @@map("scenario_run_status")
+}
+
+model Project {
+  id          String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  ownerUserId String?     @map("owner_user_id")
+  plan        ProjectPlan @default(free)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  apiKeys           ApiKey[]
+  endpoints         Endpoint[]
+  events            Event[]
+  deliveries        Delivery[]
+  deliveryAttempts  DeliveryAttempt[]
+  scenarios         Scenario[]
+  scenarioRuns      ScenarioRun[]
+  simulatedEntities SimulatedEntity[]
+
+  @@index([ownerUserId])
+  @@map("projects")
+}
+
+model ApiKey {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId String    @map("project_id") @db.Uuid
+  keyPrefix String    @unique @map("key_prefix")
+  /// SHA-256 of the full key.
+  keyHash   Bytes     @map("key_hash")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("api_keys")
+}
+
+model Endpoint {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId           String         @map("project_id") @db.Uuid
+  url                 String
+  description         String?
+  /// Event types this endpoint receives; empty means all.
+  eventFilter         String[]       @default([]) @map("event_filter")
+  /// AES-256-GCM encrypted signing secret: iv (12) || auth tag (16) || ciphertext.
+  secretEnc           Bytes          @map("secret_enc")
+  status              EndpointStatus @default(active)
+  consecutiveFailures Int            @default(0) @map("consecutive_failures")
+  disabledAt          DateTime?      @map("disabled_at") @db.Timestamptz(6)
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliveries   Delivery[]
+  scenarioRuns ScenarioRun[]
+
+  @@index([projectId])
+  @@map("endpoints")
+}
+
+model Event {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  type           String
+  payload        Json     @db.JsonB
+  idempotencyKey String   @map("idempotency_key")
+  /// SHA-256 (hex) of canonical JSON of { type, payload }; see ADR 002.
+  requestHash    String   @map("request_hash")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  deliveries Delivery[]
+
+  @@unique([projectId, idempotencyKey])
+  @@index([projectId, createdAt])
+  @@map("events")
+}
+
+/// Outbox: one row per (event, endpoint) delivery.
+model Delivery {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventId        String         @map("event_id") @db.Uuid
+  endpointId     String         @map("endpoint_id") @db.Uuid
+  projectId      String         @map("project_id") @db.Uuid
+  status         DeliveryStatus @default(pending)
+  attemptCount   Int            @default(0) @map("attempt_count")
+  nextAttemptAt  DateTime       @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
+  lockedBy       String?        @map("locked_by")
+  lockedUntil    DateTime?      @map("locked_until") @db.Timestamptz(6)
+  lastStatusCode Int?           @map("last_status_code")
+  lastError      String?        @map("last_error")
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt    DateTime?      @map("completed_at") @db.Timestamptz(6)
+
+  project  Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  event    Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  endpoint Endpoint          @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  attempts DeliveryAttempt[]
+
+  @@index([status, nextAttemptAt])
+  @@index([projectId])
+  @@index([eventId])
+  @@index([endpointId])
+  @@map("deliveries")
+}
+
+model DeliveryAttempt {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  deliveryId          String   @map("delivery_id") @db.Uuid
+  projectId           String   @map("project_id") @db.Uuid
+  attemptNo           Int      @map("attempt_no")
+  startedAt           DateTime @map("started_at") @db.Timestamptz(6)
+  durationMs          Int?     @map("duration_ms")
+  requestHeaders      Json     @map("request_headers") @db.JsonB
+  responseStatus      Int?     @map("response_status")
+  responseBodySnippet String?  @map("response_body_snippet")
+  error               String?
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  delivery Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  @@unique([deliveryId, attemptNo])
+  @@index([projectId])
+  @@map("delivery_attempts")
+}
+
+model Scenario {
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Null for built-in public scenarios.
+  projectId      String?            @map("project_id") @db.Uuid
+  slug           String
+  name           String
+  difficulty     ScenarioDifficulty
+  definitionYaml String             @map("definition_yaml")
+  isPublic       Boolean            @default(false) @map("is_public")
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  runs    ScenarioRun[]
+
+  @@unique([projectId, slug])
+  @@index([projectId])
+  @@map("scenarios")
+}
+
+model ScenarioRun {
+  id         String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId  String            @map("project_id") @db.Uuid
+  scenarioId String            @map("scenario_id") @db.Uuid
+  endpointId String            @map("endpoint_id") @db.Uuid
+  status     ScenarioRunStatus @default(pending)
+  startedAt  DateTime?         @map("started_at") @db.Timestamptz(6)
+  finishedAt DateTime?         @map("finished_at") @db.Timestamptz(6)
+  report     Json?             @db.JsonB
+  createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project  Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scenario Scenario          @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
+  endpoint Endpoint          @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  entities SimulatedEntity[]
+
+  @@index([projectId])
+  @@index([scenarioId])
+  @@index([endpointId])
+  @@map("scenario_runs")
+}
+
+model SimulatedEntity {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  runId      String   @map("run_id") @db.Uuid
+  projectId  String   @map("project_id") @db.Uuid
+  kind       String
+  externalId String   @map("external_id")
+  state      String
+  version    Int      @default(0)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  project Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  run     ScenarioRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, kind, externalId])
+  @@index([projectId])
+  @@map("simulated_entities")
+}
