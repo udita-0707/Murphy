@@ -1,0 +1,10 @@
+{
+  "name": "@murphy/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Murphy CLI (login, run, replay).",
+  "bin": {
+    "murphy": "./dist/index.js"
+  }
+}

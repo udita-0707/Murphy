@@ -46,18 +46,18 @@ docs/
 
 Run from the repo root.
 
-| Command | What it does |
-| --- | --- |
-| `pnpm install` | Install dependencies |
-| `docker compose -f infra/docker-compose.yml up -d` | Start Postgres 16 and Redis 7 |
-| `pnpm dev` | Run all apps in watch mode (API on `PORT`, default 3000) |
-| `pnpm build` | Build all packages |
-| `pnpm test` | Run all tests (integration tests need Docker for Testcontainers) |
-| `pnpm lint` | ESLint across the workspace |
-| `pnpm typecheck` | `tsc --noEmit` across the workspace |
-| `pnpm format` | Prettier write |
-| `pnpm db:migrate` | Apply Prisma migrations (`prisma migrate deploy`) to `DATABASE_URL` |
-| `pnpm db:seed` | Create a project and print its API key once |
+| Command                                            | What it does                                                        |
+| -------------------------------------------------- | ------------------------------------------------------------------- |
+| `pnpm install`                                     | Install dependencies                                                |
+| `docker compose -f infra/docker-compose.yml up -d` | Start Postgres 16 and Redis 7                                       |
+| `pnpm dev`                                         | Run all apps in watch mode (API on `PORT`, default 3000)            |
+| `pnpm build`                                       | Build all packages                                                  |
+| `pnpm test`                                        | Run all tests (integration tests need Docker for Testcontainers)    |
+| `pnpm lint`                                        | ESLint across the workspace                                         |
+| `pnpm typecheck`                                   | `tsc --noEmit` across the workspace                                 |
+| `pnpm format`                                      | Prettier write                                                      |
+| `pnpm db:migrate`                                  | Apply Prisma migrations (`prisma migrate deploy`) to `DATABASE_URL` |
+| `pnpm db:seed`                                     | Create a project and print its API key once                         |
 
 Copy `.env.example` to `.env` and fill it in before running the API or migrations.
 

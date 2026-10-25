@@ -30,7 +30,7 @@ Use PostgreSQL itself as the durable queue (a transactional outbox).
 
 ## Consequences
 
-- Exactly-once *acceptance* and at-least-once delivery with one datastore and no dual write.
+- Exactly-once _acceptance_ and at-least-once delivery with one datastore and no dual write.
 - One fewer piece of infrastructure to run, monitor and pay for.
 - The delivery queue is queryable with SQL, which makes the delivery log, DLQ and replay
   simple to build.

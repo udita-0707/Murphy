@@ -1,0 +1,17 @@
+{
+  "name": "@murphy/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Murphy database: Prisma schema, migrations, client and repository layer.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@murphy/core": "workspace:*"
+  }
+}

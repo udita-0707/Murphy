@@ -1,0 +1,17 @@
+{
+  "name": "@murphy/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared Murphy logic: Standard Webhooks signing, retry policy, canonical JSON hashing.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "fast-check": "^4.3.0"
+  }
+}

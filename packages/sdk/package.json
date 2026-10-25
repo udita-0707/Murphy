@@ -1,0 +1,7 @@
+{
+  "name": "@murphy/sdk",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Murphy TypeScript SDK (send, verifySignature)."
+}

@@ -28,10 +28,10 @@ This is a deviation from (or rather a refinement of) the brief, which only requi
   where canonical JSON recursively sorts object keys and leaves array order unchanged. Store
   it on the event row as `events.request_hash`. Comparing hashes means key order and
   whitespace in the client's JSON do not matter.
-- **Concurrency:** the insert uses `INSERT ... ON CONFLICT (project_id, idempotency_key) DO
-  NOTHING` inside the accepting transaction. The loser of a race reads the winner's row and
-  applies the rules above, so concurrent requests with the same key produce exactly one
-  event.
+- **Concurrency:** the insert uses
+  `INSERT ... ON CONFLICT (project_id, idempotency_key) DO NOTHING` inside the accepting
+  transaction. The loser of a race reads the winner's row and applies the rules above, so
+  concurrent requests with the same key produce exactly one event.
 
 ## Consequences
 

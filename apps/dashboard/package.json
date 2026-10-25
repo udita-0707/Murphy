@@ -1,0 +1,7 @@
+{
+  "name": "@murphy/dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Murphy web dashboard (Next.js + Tailwind)."
+}
