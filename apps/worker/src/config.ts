@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { parseEncryptionKey } from "@murphy/core";
 import { config as loadDotenv } from "dotenv";
+import type { MurphyMode } from "./net/ssrf.js";
 
 /** The lease must outlast a request by at least this much, or a slow but healthy request
  * could be reaped and sent twice. */
@@ -12,6 +13,8 @@ export const LEASE_SAFETY_MARGIN_MS = 15_000;
 export interface WorkerConfig {
   databaseUrl: string;
   encryptionKey: Buffer;
+  /** hosted (default): https and public addresses only. local: also http, loopback, LAN. */
+  mode: MurphyMode;
   workerId: string;
   /** Maximum deliveries claimed per poll. */
   batchSize: number;
@@ -44,6 +47,7 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv = process.env): WorkerCo
   const config: WorkerConfig = {
     databaseUrl: env.DATABASE_URL,
     encryptionKey: parseEncryptionKey(env.MURPHY_ENCRYPTION_KEY),
+    mode: parseMode(env.MURPHY_MODE),
     workerId: env.WORKER_ID || makeWorkerId(),
     batchSize: intFromEnv(env, "WORKER_BATCH_SIZE", 50, 1),
     projectCap: intFromEnv(env, "WORKER_PROJECT_CAP", 10, 1),
@@ -68,6 +72,13 @@ export function assertLeaseOutlastsRequest(
         `(${config.requestTimeoutMs}) + ${LEASE_SAFETY_MARGIN_MS} ms safety margin = ${minimum} ms`,
     );
   }
+}
+
+/** MURPHY_MODE defaults to hosted, the safe choice; local must be asked for explicitly. */
+export function parseMode(raw: string | undefined): MurphyMode {
+  if (raw === undefined || raw === "") return "hosted";
+  if (raw === "hosted" || raw === "local") return raw;
+  throw new Error(`MURPHY_MODE must be "hosted" or "local", got "${raw}"`);
 }
 
 function intFromEnv(env: NodeJS.ProcessEnv, name: string, fallback: number, min: number): number {

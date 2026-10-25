@@ -52,6 +52,14 @@ describe("worker config", () => {
     );
   });
 
+  it("defaults MURPHY_MODE to hosted and accepts only hosted or local", () => {
+    expect(loadWorkerConfig(base).mode).toBe("hosted");
+    expect(loadWorkerConfig({ ...base, MURPHY_MODE: "" }).mode).toBe("hosted");
+    expect(loadWorkerConfig({ ...base, MURPHY_MODE: "local" }).mode).toBe("local");
+    expect(() => loadWorkerConfig({ ...base, MURPHY_MODE: "dev" })).toThrow(/MURPHY_MODE/);
+    expect(() => loadWorkerConfig({ ...base, MURPHY_MODE: "LOCAL" })).toThrow(/MURPHY_MODE/);
+  });
+
   it("generates distinct worker ids", () => {
     expect(makeWorkerId()).not.toBe(makeWorkerId());
   });
