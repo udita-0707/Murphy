@@ -18,7 +18,8 @@
     "infra:up": "docker compose --env-file .env -f infra/docker-compose.yml up -d --wait",
     "infra:down": "docker compose --env-file .env -f infra/docker-compose.yml down",
     "db:migrate": "pnpm --filter @murphy/db db:migrate",
-    "db:seed": "pnpm --filter @murphy/api db:seed"
+    "db:seed": "pnpm --filter @murphy/api db:seed",
+    "receiver": "pnpm --filter @murphy/dev-receiver start --"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

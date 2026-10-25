@@ -1,0 +1,18 @@
+{
+  "name": "@murphy/dev-receiver",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local webhook receiver for Murphy: verifies signatures and simulates failures.",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@murphy/core": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0"
+  }
+}
