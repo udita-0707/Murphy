@@ -2,7 +2,7 @@ import { encryptSecret, generateSigningSecret, verify } from "@murphy/core";
 import { createDeliveryQueue, createRepository, type DeliveryQueue } from "@murphy/db";
 import { randomBytes } from "node:crypto";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { createDeliveryHandler, USER_AGENT, webhookId } from "../src/deliver.js";
+import { createDeliveryHandler, EVENT_TYPE_HEADER, USER_AGENT, webhookId } from "../src/deliver.js";
 import type { MurphyMode } from "../src/net/ssrf.js";
 import {
   createFixture,
@@ -87,6 +87,9 @@ describe("delivery execution", () => {
     expect(req.headers["webhook-id"]).toBe(webhookId(f.eventId));
     expect(req.headers["webhook-id"]).toBe(`msg_${f.eventId}`);
     expect(req.headers["user-agent"]).toBe(USER_AGENT);
+    expect(EVENT_TYPE_HEADER).toBe("webhook-event-type");
+    expect(req.headers["webhook-event-type"]).toBe("payment.captured");
+    // The payload stays raw: no envelope, the type travels in the header.
     expect(JSON.parse(req.body)).toEqual({ id: "pay_1", amount: 49900 });
 
     const d = await delivery(f);
@@ -108,6 +111,7 @@ describe("delivery execution", () => {
     expect(a!.projectId).toBe(f.projectId);
     const logged = a!.requestHeaders as Record<string, string>;
     expect(logged["webhook-signature"]).toBe(req.headers["webhook-signature"]);
+    expect(logged["webhook-event-type"]).toBe("payment.captured");
     expect(JSON.stringify(a)).not.toContain(secret);
     expect(JSON.stringify(a)).not.toContain(secret.slice("whsec_".length));
   });
@@ -149,6 +153,9 @@ describe("delivery execution", () => {
     const timestamps = new Set(receiver.received.map((r) => r.headers["webhook-timestamp"]));
     const signatures = new Set(receiver.received.map((r) => r.headers["webhook-signature"]));
     expect(ids.size).toBe(1);
+    expect(new Set(receiver.received.map((r) => r.headers["webhook-event-type"]))).toEqual(
+      new Set(["payment.captured"]),
+    );
     expect(timestamps.size).toBe(3);
     expect(signatures.size).toBe(3);
     expect(receiver.received.every((r) => r.valid)).toBe(true);

@@ -6,6 +6,8 @@ import { decideOutcome } from "./policy.js";
 import type { DeliveryHandler } from "./worker.js";
 
 export const USER_AGENT = "Murphy-Webhooks/0.1";
+/** Carries the event type outside the raw payload (ADR 006). Not covered by the signature. */
+export const EVENT_TYPE_HEADER = "webhook-event-type";
 
 export interface DeliverOptions {
   queue: DeliveryQueue;
@@ -48,6 +50,7 @@ export function createDeliveryHandler(options: DeliverOptions): DeliveryHandler 
     const secret = decryptSecret(ctx.secretEnc, options.encryptionKey);
     const headers = {
       ...signHeaders({ id: webhookId(ctx.eventId), timestamp, body, secrets: [secret] }),
+      [EVENT_TYPE_HEADER]: ctx.eventType,
       "user-agent": USER_AGENT,
     };
 

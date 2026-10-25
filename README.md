@@ -73,9 +73,10 @@ Every copy carries the same `webhook-id` (`msg_<event id>`). **Deduplicate on `w
 store the ids you have processed and skip repeats. `webhook-timestamp` and the signature are
 fresh on every attempt, so a replayed delivery still verifies within the 5-minute tolerance.
 
-**Requests** are `POST` with the event payload as the JSON body and the headers
-`webhook-id`, `webhook-timestamp` and `webhook-signature: v1,<base64 HMAC-SHA256>` over
-`{id}.{timestamp}.{body}` with your endpoint secret.
+**Requests** are `POST` with the event payload, unchanged, as the JSON body and the headers
+`webhook-id`, `webhook-timestamp`, `webhook-signature: v1,<base64 HMAC-SHA256>` over
+`{id}.{timestamp}.{body}` with your endpoint secret, and `webhook-event-type` (the event's
+type; not covered by the signature).
 
 **Retries.** 2xx is success. Timeouts, network errors, 5xx, 408, 425 and 429 are retried after
 5 s, 30 s, 2 m, 10 m, 30 m, 1 h, 3 h and 6 h (±20% jitter; `Retry-After` honoured up to 6 h),

@@ -23,8 +23,12 @@ configuration errors, what to do on 410, and what counts toward the attempt limi
   including replays, from the worker's clock at send time. A delivery replayed an hour (or a
   week) after the original still verifies within the receiver's 5-minute tolerance.
 - The body is the event's `payload` serialised as JSON, as stored. Murphy does not wrap it in
-  an envelope; the event type is expected inside the payload, as provider payloads already do
-  (for example Razorpay's `"event": "payment.captured"`).
+  an envelope, because simulated provider payloads (Razorpay- or Stripe-style) already carry
+  their own type, for example Razorpay's `"event": "payment.captured"`.
+- `webhook-event-type: <event type>` carries the type outside the payload on every attempt
+  (decided 2026-10-26). It is logged with the other request headers. It is not covered by the
+  signature, which signs `{id}.{timestamp}.{body}` per the Standard Webhooks spec; receivers
+  that need to trust the type should read it from the signed body.
 - The endpoint's signing secret is decrypted only in the worker, only for the duration of one
   attempt. Logged request headers include the signature but never the secret.
 
@@ -80,7 +84,7 @@ query.
 - **New `webhook-id` per attempt:** makes receiver-side deduplication impossible.
 - **Sign once at enqueue time:** replays and late retries would fail timestamp tolerance.
 - **Wrap the payload in `{type, timestamp, data}`:** the Standard Webhooks suggestion, but it
-  would make simulated provider payloads differ from what the real provider sends. Revisit if
-  receivers ask for the type outside the payload (a `webhook-event-type` header is an option).
+  would make simulated provider payloads differ from what the real provider sends. The
+  `webhook-event-type` header gives receivers the type without changing the body.
 - **Count client errors from `delivery_attempts`:** no schema change, but needs a query per
   attempt and a definition of "since the last replay" based on timestamps.
