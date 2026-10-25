@@ -194,6 +194,102 @@ describe("endpoints", () => {
   });
 });
 
+describe("endpoint soft delete", () => {
+  it("hides the endpoint, cancels unfinished deliveries and keeps history", async () => {
+    const project = await createProject(env.repo);
+    const doomed = await createEndpoint(project);
+    const kept = await createEndpoint(project);
+    const { body: event } = await postEvent(project, randomUUID(), paymentCaptured);
+    expect(event.deliveries).toBe(2);
+
+    // One of the doomed endpoint's deliveries is mid-flight, another already succeeded.
+    const [pending] = await env.prisma.delivery.findMany({
+      where: { eventId: event.id, endpointId: doomed.id },
+    });
+    const { body: second } = await postEvent(project, randomUUID(), paymentCaptured);
+    await env.prisma.delivery.updateMany({
+      where: { eventId: second.id, endpointId: doomed.id },
+      data: { status: "in_flight", lockedBy: "w1", lockedUntil: new Date(Date.now() + 60_000) },
+    });
+    const { body: third } = await postEvent(project, randomUUID(), paymentCaptured);
+    await env.prisma.delivery.updateMany({
+      where: { eventId: third.id, endpointId: doomed.id },
+      data: { status: "succeeded", completedAt: new Date() },
+    });
+
+    const res = await request(env.app).delete(`/v1/endpoints/${doomed.id}`).set(project.auth);
+    expect(res.status).toBe(204);
+
+    // Gone from the API.
+    expect(
+      (await request(env.app).get(`/v1/endpoints/${doomed.id}`).set(project.auth)).status,
+    ).toBe(404);
+    const patch = await request(env.app)
+      .patch(`/v1/endpoints/${doomed.id}`)
+      .set(project.auth)
+      .send({ status: "active" });
+    expect(patch.status).toBe(404);
+    expect(
+      (await request(env.app).delete(`/v1/endpoints/${doomed.id}`).set(project.auth)).status,
+    ).toBe(404);
+    const list = await request(env.app).get("/v1/endpoints").set(project.auth);
+    expect(list.body.data.map((e: { id: string }) => e.id)).toEqual([kept.id]);
+
+    // Row kept with deleted_at; unfinished deliveries cancelled, finished ones untouched.
+    const row = await env.prisma.endpoint.findUniqueOrThrow({ where: { id: doomed.id } });
+    expect(row.deletedAt).not.toBeNull();
+    const doomedDeliveries = await env.prisma.delivery.findMany({
+      where: { endpointId: doomed.id },
+    });
+    const byEvent = Object.fromEntries(doomedDeliveries.map((d) => [d.eventId, d]));
+    expect(byEvent[event.id]).toMatchObject({
+      id: pending!.id,
+      status: "cancelled",
+      lockedBy: null,
+    });
+    expect(byEvent[event.id]!.completedAt).not.toBeNull();
+    expect(byEvent[second.id]).toMatchObject({
+      status: "cancelled",
+      lockedBy: null,
+      lockedUntil: null,
+    });
+    expect(byEvent[third.id]).toMatchObject({ status: "succeeded" });
+    expect(
+      await env.prisma.delivery.count({ where: { endpointId: kept.id, status: "pending" } }),
+    ).toBe(3);
+
+    // History stays visible on the event.
+    const fetched = await request(env.app).get(`/v1/events/${event.id}`).set(project.auth);
+    expect(fetched.body.deliveries).toHaveLength(2);
+    expect(
+      fetched.body.deliveries.find((d: { endpoint_id: string }) => d.endpoint_id === doomed.id),
+    ).toMatchObject({ status: "cancelled" });
+
+    // New events no longer fan out to the deleted endpoint.
+    const after = await postEvent(project, randomUUID(), paymentCaptured);
+    expect(after.body.deliveries).toBe(1);
+    expect(
+      await env.prisma.delivery.count({ where: { eventId: after.body.id, endpointId: doomed.id } }),
+    ).toBe(0);
+  });
+
+  it("does not let another project delete or cancel anything", async () => {
+    const a = await createProject(env.repo, "A");
+    const b = await createProject(env.repo, "B");
+    const endpoint = await createEndpoint(a);
+    await postEvent(a, randomUUID(), paymentCaptured);
+    expect((await request(env.app).delete(`/v1/endpoints/${endpoint.id}`).set(b.auth)).status).toBe(
+      404,
+    );
+    expect(
+      await env.prisma.delivery.count({ where: { endpointId: endpoint.id, status: "pending" } }),
+    ).toBe(1);
+    expect(
+      (await env.prisma.endpoint.findUniqueOrThrow({ where: { id: endpoint.id } })).deletedAt,
+    ).toBeNull();
+  });
+});
+
 describe("POST /v1/events idempotency", () => {
   it("replays the original 202 for a sequential retry with the same payload", async () => {
     const project = await createProject(env.repo);

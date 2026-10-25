@@ -88,14 +88,17 @@ export function createRepository(prisma: PrismaClient) {
 
       async list(projectId: string): Promise<EndpointRecord[]> {
         return prisma.endpoint.findMany({
-          where: { projectId },
+          where: { projectId, deletedAt: null },
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
           select: endpointSelect,
         });
       },
 
       async get(projectId: string, id: string): Promise<EndpointRecord | null> {
-        return prisma.endpoint.findFirst({ where: { id, projectId }, select: endpointSelect });
+        return prisma.endpoint.findFirst({
+          where: { id, projectId, deletedAt: null },
+          select: endpointSelect,
+        });
       },
 
       async update(
@@ -104,17 +107,35 @@ export function createRepository(prisma: PrismaClient) {
         input: UpdateEndpointInput,
       ): Promise<EndpointRecord | null> {
         const { count } = await prisma.endpoint.updateMany({
-          where: { id, projectId },
+          where: { id, projectId, deletedAt: null },
           data: input,
         });
         if (count === 0) return null;
-        return prisma.endpoint.findFirst({ where: { id, projectId }, select: endpointSelect });
+        return prisma.endpoint.findFirst({
+          where: { id, projectId, deletedAt: null },
+          select: endpointSelect,
+        });
       },
 
-      /** Returns false if the endpoint does not exist in this project. */
+      /**
+       * Soft-deletes an endpoint (ADR 003) and cancels its unfinished deliveries, in one
+       * transaction. Delivery and attempt history stay queryable. Returns false if the
+       * endpoint does not exist in this project or is already deleted.
+       */
       async delete(projectId: string, id: string): Promise<boolean> {
-        const { count } = await prisma.endpoint.deleteMany({ where: { id, projectId } });
-        return count > 0;
+        return prisma.$transaction(async (tx) => {
+          const now = new Date();
+          const { count } = await tx.endpoint.updateMany({
+            where: { id, projectId, deletedAt: null },
+            data: { deletedAt: now },
+          });
+          if (count === 0) return false;
+          await tx.delivery.updateMany({
+            where: { endpointId: id, projectId, status: { in: ["pending", "in_flight"] } },
+            data: { status: "cancelled", completedAt: now, lockedBy: null, lockedUntil: null },
+          });
+          return true;
+        });
       },
     },
 
@@ -143,6 +164,7 @@ export function createRepository(prisma: PrismaClient) {
               FROM endpoints e
               WHERE e.project_id = ${projectId}::uuid
                 AND e.status = 'active'
+                AND e.deleted_at IS NULL
                 AND (cardinality(e.event_filter) = 0 OR ${input.type} = ANY (e.event_filter))`;
             return { outcome: "created", eventId: created.id, deliveries };
           }

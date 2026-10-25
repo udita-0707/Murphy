@@ -32,6 +32,8 @@ enum DeliveryStatus {
   succeeded
   failed
   dead
+  /// The endpoint was deleted before the delivery finished; never retried or replayed.
+  cancelled
 
   @@map("delivery_status")
 }
@@ -102,6 +104,8 @@ model Endpoint {
   consecutiveFailures Int            @default(0) @map("consecutive_failures")
   disabledAt          DateTime?      @map("disabled_at") @db.Timestamptz(6)
   createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Soft delete (ADR 003): hidden from the API and fan-out, history kept.
+  deletedAt           DateTime?      @map("deleted_at") @db.Timestamptz(6)
 
   project      Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   deliveries   Delivery[]

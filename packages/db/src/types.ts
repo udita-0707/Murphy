@@ -1,5 +1,6 @@
 export type EndpointStatus = "active" | "disabled" | "paused";
-export type DeliveryStatus = "pending" | "in_flight" | "succeeded" | "failed" | "dead";
+export type DeliveryStatus =
+  "pending" | "in_flight" | "succeeded" | "failed" | "dead" | "cancelled";
 export type ProjectPlan = "free" | "edu";
 
 export type JsonValue =
