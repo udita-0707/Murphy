@@ -122,5 +122,24 @@ export async function safeTarget(
       `${host} resolves to blocked address ${blocked.address}`,
     );
   }
-  return { url, pinned: addresses[0]! };
+  return { url, pinned: pickPinned(addresses, mode) };
+}
+
+/**
+ * Chooses which validated address the connection is pinned to. Every address has already
+ * passed the checks above, so this never widens what is allowed.
+ *
+ * In local mode IPv4 is preferred: `localhost` usually resolves to `::1` first, and a dev
+ * receiver listening only on 127.0.0.1 would otherwise refuse the connection. Hosted mode
+ * keeps the resolver's order.
+ */
+export function pickPinned(
+  addresses: readonly ResolvedAddress[],
+  mode: MurphyMode,
+): ResolvedAddress {
+  if (mode === "local") {
+    const ipv4 = addresses.find((a) => a.family === 4);
+    if (ipv4) return ipv4;
+  }
+  return addresses[0]!;
 }

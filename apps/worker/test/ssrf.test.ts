@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { isAddressAllowed, type Resolver, safeTarget, SsrfError } from "../src/net/ssrf.js";
+import {
+  isAddressAllowed,
+  pickPinned,
+  type Resolver,
+  safeTarget,
+  SsrfError,
+} from "../src/net/ssrf.js";
 
 const BLOCKED_EVERYWHERE = [
   // IPv4
@@ -192,5 +198,57 @@ describe("safeTarget", () => {
     expect(await reason(safeTarget("https://empty.example/", "hosted", async () => []))).toBe(
       "no_addresses",
     );
+  });
+
+  it("pins IPv4 first in local mode when localhost resolves to ::1 first", async () => {
+    const dualStack: Resolver = async () => [
+      { address: "::1", family: 6 },
+      { address: "127.0.0.1", family: 4 },
+    ];
+    const target = await safeTarget("http://localhost:4242/webhooks", "local", dualStack);
+    expect(target.pinned).toEqual({ address: "127.0.0.1", family: 4 });
+    expect(target.url.hostname).toBe("localhost");
+  });
+
+  it("falls back to IPv6 in local mode when there is no IPv4 address", async () => {
+    const v6only: Resolver = async () => [{ address: "::1", family: 6 }];
+    expect((await safeTarget("http://localhost/", "local", v6only)).pinned).toEqual({
+      address: "::1",
+      family: 6,
+    });
+  });
+
+  it("keeps the resolver's order in hosted mode", async () => {
+    const publicDual: Resolver = async () => [
+      { address: "2606:4700:4700::1111", family: 6 },
+      { address: "93.184.215.14", family: 4 },
+    ];
+    expect(
+      (await safeTarget("https://hooks.example.com/", "hosted", publicDual)).pinned.address,
+    ).toBe("2606:4700:4700::1111");
+  });
+
+  it("still rejects the whole answer if any address is blocked, whichever would be pinned", async () => {
+    const sneaky: Resolver = async () => [
+      { address: "127.0.0.1", family: 4 },
+      { address: "fd00:ec2::254", family: 6 },
+    ];
+    expect(await reason(safeTarget("http://localhost/", "local", sneaky))).toBe("address_blocked");
+    const metadataV4: Resolver = async () => [
+      { address: "::1", family: 6 },
+      { address: "169.254.169.254", family: 4 },
+    ];
+    expect(await reason(safeTarget("http://localhost/", "local", metadataV4))).toBe(
+      "address_blocked",
+    );
+  });
+
+  it("pickPinned only ever returns one of the given addresses", () => {
+    const addresses = [
+      { address: "::1", family: 6 as const },
+      { address: "10.0.0.2", family: 4 as const },
+    ];
+    expect(addresses).toContainEqual(pickPinned(addresses, "local"));
+    expect(addresses).toContainEqual(pickPinned(addresses, "hosted"));
   });
 });

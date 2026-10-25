@@ -145,4 +145,27 @@ describe("sendWebhook", () => {
     });
     expect(result).toMatchObject({ ok: false, kind: "aborted" });
   });
+
+  it("reaches an IPv4-only receiver through localhost in local mode, pinned to 127.0.0.1", async () => {
+    const port = await listen((req, res) => res.end(req.socket.remoteAddress ?? ""));
+    // localhost answering ::1 first, like macOS; the server listens on 127.0.0.1 only.
+    const resolver = vi.fn<Resolver>(async () => [
+      { address: "::1", family: 6 as const },
+      { address: "127.0.0.1", family: 4 as const },
+    ]);
+    const result = await sendWebhook({
+      ...base,
+      url: `http://localhost:${port}/webhooks`,
+      resolver,
+    });
+    expect(result).toMatchObject({ ok: true, status: 200 });
+    expect(received[0]!.headers.host).toBe(`localhost:${port}`);
+    expect(resolver).toHaveBeenCalledTimes(1);
+  });
+
+  it("reaches an IPv4-only receiver through the real localhost resolver in local mode", async () => {
+    const port = await listen((_req, res) => res.end("ok"));
+    const result = await sendWebhook({ ...base, url: `http://localhost:${port}/webhooks` });
+    expect(result).toMatchObject({ ok: true, status: 200, bodySnippet: "ok" });
+  });
 });

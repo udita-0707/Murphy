@@ -11,9 +11,10 @@ pnpm receiver --fail 3 --status 503 --retry-after 5
 pnpm receiver --delay-ms 8000
 ```
 
-Register `http://127.0.0.1:4242/webhooks` as an endpoint (the worker needs `MURPHY_MODE=local`
-to deliver to localhost). Use `127.0.0.1` rather than `localhost`: the receiver listens on
-IPv4 only, and `localhost` may resolve to `::1` first. Invalid signatures get a 401.
+Register `http://localhost:4242/webhooks` (or `http://127.0.0.1:4242/webhooks`) as an endpoint.
+The worker needs `MURPHY_MODE=local` to deliver to localhost; in local mode it connects over
+IPv4 first, so the receiver (which listens on 127.0.0.1) is reachable even where `localhost`
+resolves to `::1` first. Invalid signatures get a 401.
 
 Change behaviour while it runs:
 

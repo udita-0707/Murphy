@@ -46,7 +46,12 @@ in `fc00::/7`.
 
 **Pinning.** The connection goes through an undici `Agent` whose `connect.lookup` always
 returns the validated address, so a second DNS answer cannot redirect the connection. The
-`Host` header and TLS SNI keep the original hostname, so certificates still validate.
+`Host` header and TLS SNI keep the original hostname, so certificates still validate. Which
+validated address is pinned: in `local` mode the first IPv4 address if there is one (so
+`localhost`, which often resolves to `::1` first, reaches a receiver listening only on
+127.0.0.1); in `hosted` mode the resolver's first answer. The choice is made only among
+addresses that all passed the checks, so it never widens what is allowed (decided
+2026-10-26).
 
 **Request limits.** Redirects are never followed; a 3xx is returned as a status and treated
 as a failed attempt. One total timeout (10 s) covers connecting, headers and body. At most
@@ -60,8 +65,8 @@ as a failed attempt. One total timeout (10 s) covers connecting, headers and bod
 - Local development needs `MURPHY_MODE=local` (commented out in `.env.example`). A deployment that forgets
   the variable gets the safe `hosted` behaviour.
 - Receivers behind a redirect (for example http to https) must register the final URL.
-- Pinning uses the first validated address, so there is no fallback to a second address if
-  the first is unreachable. That is acceptable for webhooks, which are retried.
+- Pinning uses one validated address (IPv4 first in local mode), so there is no fallback to a
+  second address if it is unreachable. That is acceptable for webhooks, which are retried.
 - The API still accepts any http(s) URL when an endpoint is created. Rejecting obviously
   blocked URLs at creation time would give faster feedback, and is a possible follow-up.
 
