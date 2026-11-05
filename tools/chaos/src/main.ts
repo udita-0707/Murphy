@@ -2,7 +2,7 @@ import { canonicalHash } from "@murphy/core";
 import { createPrismaClient, runMigrations, type PrismaClient } from "@murphy/db";
 import { auditViolations, installDeliveryAudit } from "@murphy/db/audit";
 import { randomBytes } from "node:crypto";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import path from "node:path";
@@ -169,9 +169,18 @@ async function main(): Promise<number> {
   });
   const startedAt = new Date();
   const label = `${seed}-${startedAt.toISOString().replaceAll(/[:.]/g, "-")}`;
-  const outDir = path.resolve(args.out ?? path.join(REPO_ROOT, ".chaos", label));
+  const outDir = args.out
+    ? // pnpm --filter runs this from tools/chaos, so resolve from where the command was typed.
+      path.resolve(process.env.INIT_CWD ?? process.cwd(), args.out)
+    : path.join(REPO_ROOT, ".chaos", label);
   mkdirSync(outDir, { recursive: true });
   const say = (message: string) => console.log(`[chaos ${seed}] ${message}`);
+
+  // A laptop going to sleep freezes every process while leases keep expiring by wall clock, which
+  // looks like a stuck engine. This happened during a real run, so keep the machine awake.
+  if (process.platform === "darwin") {
+    spawn("caffeinate", ["-ims", "-w", String(process.pid)], { stdio: "ignore" }).unref();
+  }
 
   say(
     `seed ${seed}, plan ${planHash(plan)}: ${plan.events.length} events, ${plan.faults.length} planned actions`,
@@ -359,39 +368,40 @@ async function main(): Promise<number> {
       });
     const workers: Managed[] = [];
     for (let slot = 0; slot < plan.workers; slot++) workers.push(startWorker(slot));
-    const respawns: Promise<void>[] = [];
+    const workerReady: Promise<void>[] = workers.map(() => Promise.resolve());
+    let apiReady: Promise<void> = Promise.resolve();
     let postgresRestarts: Promise<void> = Promise.resolve();
 
     // Faults run on their own clock, independently of the load.
     const runFault = async (fault: PlanFault): Promise<void> => {
       switch (fault.action) {
         case "kill_worker": {
+          // If the last kill's replacement is not up yet, wait for it, so this kill hits a live
+          // process and each kill makes exactly one replacement.
           const slot = fault.worker;
+          await workerReady[slot];
           const id = workerId(slot);
           logControl("kill_worker", "start", id, `pid ${workers[slot]!.child.pid}`);
           await procs.kill(workers[slot]!);
           logControl("kill_worker", "done", id);
           say(`killed worker ${id}`);
-          respawns.push(
-            sleep(fault.respawnMs).then(() => {
-              workerGeneration[slot]! += 1;
-              workers[slot] = startWorker(slot);
-              logControl("respawn_worker", "start", workerId(slot));
-            }),
-          );
+          workerReady[slot] = sleep(fault.respawnMs).then(() => {
+            workerGeneration[slot]! += 1;
+            workers[slot] = startWorker(slot);
+            logControl("respawn_worker", "start", workerId(slot));
+          });
           return;
         }
         case "kill_api": {
+          await apiReady;
           logControl("kill_api", "start", undefined, `pid ${api.child.pid}`);
           await procs.kill(api);
           logControl("kill_api", "done");
           say("killed the API");
-          respawns.push(
-            sleep(fault.respawnMs).then(() => {
-              api = startApi();
-              logControl("respawn_api", "start");
-            }),
-          );
+          apiReady = sleep(fault.respawnMs).then(() => {
+            api = startApi();
+            logControl("respawn_api", "start");
+          });
           return;
         }
         case "restart_postgres": {
@@ -482,11 +492,14 @@ async function main(): Promise<number> {
     say("load finished");
     await Promise.all(faults);
     await sabotageRun;
-    await Promise.all(respawns);
+    await Promise.all(workerReady);
+    await apiReady;
 
     // Quiet period.
     say("draining: waiting for delivery work to finish");
     const drainStarted = Date.now();
+    // Counted in polls rather than wall clock, so time the machine spent asleep does not count.
+    let drainPolledMs = 0;
     let drainTimedOut = false;
     let lastFingerprint = "";
     let lastChange = Date.now();
@@ -510,12 +523,13 @@ async function main(): Promise<number> {
         lastChange = Date.now();
       }
       if (active === 0 && Date.now() - lastChange >= QUIET_MS) break;
-      if (Date.now() - drainStarted > DRAIN_TIMEOUT_MS) {
+      if (drainPolledMs > DRAIN_TIMEOUT_MS) {
         drainTimedOut = true;
         say(`drain timed out with ${active} deliveries still active`);
         break;
       }
       await sleep(1000);
+      drainPolledMs += 1000;
     }
     const drainSeconds = Math.round((Date.now() - drainStarted) / 1000);
     say(`quiet after ${drainSeconds} s`);
