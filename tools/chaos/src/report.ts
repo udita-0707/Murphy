@@ -208,7 +208,7 @@ ${table(
   result.effects.map((e) => [e.name, e.ok ? "yes" : "**no**", e.evidence]),
 )}
 
-Leases each killed or replaced worker left behind: ${
+Expired leases by worker, including workers that survived but lost Postgres mid-delivery: ${
       Object.entries(result.killedWorkerLeases)
         .sort()
         .map(([w, n]) => `${w}: ${n}`)

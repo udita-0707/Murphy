@@ -116,6 +116,7 @@ function world(): RunData {
     },
     client,
     control: [
+      { t: 40, action: "kill_worker", phase: "start", target: "w0.0" },
       { t: 50, action: "disable_endpoint", phase: "start", target: "parked" },
       { t: 51, action: "disable_endpoint", phase: "done", target: "parked" },
       { t: 60, action: "delete_endpoint", phase: "start", target: "gone" },
@@ -365,6 +366,12 @@ describe("verifyRun", () => {
       expect(result.vacuous).toBe(true);
       expect(result.passed).toBe(false);
       expect(result.invariants.filter((i) => i.status === "fail")).toEqual([]);
+    });
+    it("does not credit worker kills with leases from workers that were never killed", () => {
+      const data = world();
+      data.db.leaseExpiredByWorker = { "survivor.0": 10 };
+      const effect = verifyRun(data).effects.find((e) => e.name.startsWith("Worker kills"));
+      expect(effect!.ok).toBe(false);
     });
     it("fails when Postgres never really restarted", () => {
       const data = world();

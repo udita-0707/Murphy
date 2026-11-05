@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makePlan } from "../src/plan.js";
 import { buildReport, renderRunReport, verdict, type RunMeta } from "../src/report.js";
 import { expectedFailure, isSabotage } from "../src/sabotage.js";
+import { renderSummary } from "../src/summary.js";
 import type { RunResult } from "../src/types.js";
 
 const result: RunResult = {
@@ -118,5 +119,49 @@ describe("sabotage modes", () => {
     expect(isSabotage(undefined)).toBe(false);
     expect(expectedFailure("lost-event")).toBe("I1");
     expect(expectedFailure("fake-success")).toBe("I5");
+  });
+});
+
+describe("summary document", () => {
+  const seed = (n: number, passed = true) =>
+    buildReport({ ...meta, seed: n }, { ...result, passed });
+  const control = (mode: "lost-event" | "fake-success", caught: boolean) =>
+    buildReport(
+      { ...meta, sabotage: mode, sabotageDetail: "damaged it" },
+      {
+        ...result,
+        passed: false,
+        invariants: [
+          { ...result.invariants[0]!, id: "I1", status: caught ? "fail" : "pass" },
+          { ...result.invariants[0]!, id: "I5", status: "pass" },
+        ],
+      },
+    );
+
+  it("counts passes honestly and adds up accepted events", () => {
+    const text = renderSummary([seed(1), seed(2, false), seed(3)], [], "");
+    expect(text).toContain("**2 of 3 seeded runs passed.**");
+    expect(text).toContain("accepted 30 events");
+    expect(text).toContain("# Full detail: seed 1");
+  });
+
+  it("reports whether each negative control was caught", () => {
+    expect(renderSummary([seed(1)], [control("lost-event", true)], "")).toContain(
+      "failed, as it must",
+    );
+    expect(renderSummary([seed(1)], [control("lost-event", false)], "")).toContain(
+      "**DID NOT FAIL**",
+    );
+  });
+
+  it("refuses to treat a normal run as a negative control, or to summarise nothing", () => {
+    expect(() => renderSummary([seed(1)], [seed(2)], "")).toThrow(/not a sabotage run/);
+    expect(() => renderSummary([], [], "")).toThrow(/at least one/);
+  });
+
+  it("keeps the limits and the notes in the document", () => {
+    const text = renderSummary([seed(1)], [], "## Bugs found\n\nA bug.");
+    expect(text).toContain("Disabled and paused endpoints get no new deliveries");
+    expect(text).toContain("## Bugs found");
   });
 });

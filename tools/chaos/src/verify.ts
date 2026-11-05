@@ -531,6 +531,15 @@ export function verifyRun(data: RunData): RunResult {
   const count = (a: string) => actions.get(a) ?? 0;
   const planned = (action: string) => plan.faults.filter((f) => f.action === action).length;
   const leases = Object.values(db.leaseExpiredByWorker).reduce((sum, n) => sum + n, 0);
+  // Only workers really killed count here. Others also lose leases when Postgres restarts.
+  const killed = new Set(
+    data.control
+      .filter((c) => c.action === "kill_worker" && c.phase === "start")
+      .map((c) => c.target),
+  );
+  const killedLeases = Object.entries(db.leaseExpiredByWorker)
+    .filter(([worker]) => killed.has(worker))
+    .reduce((sum, [, n]) => sum + n, 0);
   const distinctStarts = new Set(data.postmasterStarts).size;
   const effect = (name: string, ok: boolean, evidence: string): FaultEffect => ({
     name,
@@ -540,8 +549,8 @@ export function verifyRun(data: RunData): RunResult {
   const effects: FaultEffect[] = [
     effect(
       "Worker kills abandoned real work",
-      leases > 0,
-      `${leases} leases expired and were reaped`,
+      killedLeases > 0,
+      `${killedLeases} deliveries were in flight on the ${killed.size} killed workers and were reaped; ${leases - killedLeases} more were reaped from workers that survived but lost Postgres`,
     ),
     effect(
       "Postgres really restarted",
