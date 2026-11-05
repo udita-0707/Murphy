@@ -30,7 +30,7 @@ export interface Counters {
 export function decideOutcome(
   result: SendResult,
   counters: Counters,
-  options: { random?: () => number } = {},
+  options: { random?: () => number; schedule?: readonly number[] } = {},
 ): AttemptOutcome {
   if (!result.ok && result.kind === "aborted") return { kind: "none" };
 
@@ -51,7 +51,11 @@ export function decideOutcome(
     disableEndpoint,
   });
   const retry = (retryAfter?: string | null): AttemptOutcome => {
-    const delayMs = nextRetryDelay(attemptCount, { retryAfter, random: options.random });
+    const delayMs = nextRetryDelay(attemptCount, {
+      retryAfter,
+      random: options.random,
+      schedule: options.schedule,
+    });
     if (delayMs === null) return dead();
     return {
       kind: "retry",

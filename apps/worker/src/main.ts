@@ -18,6 +18,7 @@ const worker = new Worker({
     encryptionKey: config.encryptionKey,
     mode: config.mode,
     requestTimeoutMs: config.requestTimeoutMs,
+    retrySchedule: config.retryScheduleMs,
     onAttempt: (info) => console.log(JSON.stringify({ level: "info", msg: "attempt", ...info })),
   }),
 });
@@ -26,6 +27,7 @@ worker.start();
 const stopReaper = startReaper({
   queue,
   intervalMs: config.reapIntervalMs,
+  retrySchedule: config.retryScheduleMs,
   onReap: (reaped) =>
     console.log(JSON.stringify({ level: "warn", msg: "reaped expired leases", reaped })),
   onError: (err) =>

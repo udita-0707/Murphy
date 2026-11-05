@@ -30,6 +30,8 @@ export interface WorkerConfig {
   reapIntervalMs: number;
   /** How long graceful shutdown waits for in-flight deliveries before releasing them. */
   shutdownTimeoutMs: number;
+  /** Replaces the retry schedule. Local mode only, used by the chaos harness (ADR 010). */
+  retryScheduleMs?: readonly number[];
 }
 
 /** Loads the repo-root .env (if present) without overriding variables already set. */
@@ -61,7 +63,29 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv = process.env): WorkerCo
     reapIntervalMs: intFromEnv(env, "WORKER_REAP_INTERVAL_MS", 10_000, 100),
   };
   assertLeaseOutlastsRequest(config);
+  const retryScheduleMs = parseRetrySchedule(env.WORKER_RETRY_SCHEDULE_MS, config.mode);
+  if (retryScheduleMs) config.retryScheduleMs = retryScheduleMs;
   return config;
+}
+
+/**
+ * A compressed schedule would burn a real receiver's retry budget in seconds, so anything other
+ * than local mode refuses to start with one set.
+ */
+function parseRetrySchedule(raw: string | undefined, mode: MurphyMode): number[] | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  if (mode !== "local") {
+    throw new Error(
+      `WORKER_RETRY_SCHEDULE_MS is only allowed when MURPHY_MODE=local, but the mode is "${mode}"`,
+    );
+  }
+  const schedule = raw.split(",").map((part) => Number(part.trim()));
+  if (!schedule.every((ms) => Number.isInteger(ms) && ms > 0)) {
+    throw new Error(
+      `WORKER_RETRY_SCHEDULE_MS must be comma-separated positive milliseconds, got "${raw}"`,
+    );
+  }
+  return schedule;
 }
 
 /** Fails fast when a lease could expire while its request is still legitimately running. */

@@ -9,16 +9,22 @@ export interface ReaperOptions {
   intervalMs: number;
   /** Maximum rows reaped per pass. */
   limit?: number;
+  /** Replaces the retry schedule (ADR 010). */
+  retrySchedule?: readonly number[];
   onReap?: (reaped: ReapedDelivery[]) => void;
   onError?: (err: unknown) => void;
 }
 
 /** One reaper pass (ADR 007). */
-export function reapOnce(queue: DeliveryQueue, limit = 100): Promise<ReapedDelivery[]> {
+export function reapOnce(
+  queue: DeliveryQueue,
+  limit = 100,
+  retrySchedule?: readonly number[],
+): Promise<ReapedDelivery[]> {
   return queue.reapExpired({
     limit,
     freeReaps: FREE_REAPS,
-    retryDelay: (attemptCount) => nextRetryDelay(attemptCount),
+    retryDelay: (attemptCount) => nextRetryDelay(attemptCount, { schedule: retrySchedule }),
   });
 }
 
@@ -27,7 +33,7 @@ export function startReaper(options: ReaperOptions): () => Promise<void> {
   let stopped = false;
   let running: Promise<void> = Promise.resolve();
   const tick = () => {
-    running = reapOnce(options.queue, options.limit)
+    running = reapOnce(options.queue, options.limit, options.retrySchedule)
       .then((reaped) => {
         if (reaped.length > 0) options.onReap?.(reaped);
       })

@@ -19,6 +19,8 @@ export interface DeliverOptions {
   /** Clock for webhook-timestamp; injectable for tests. */
   now?: () => Date;
   random?: () => number;
+  /** Replaces the retry schedule (ADR 010). */
+  retrySchedule?: readonly number[];
   onAttempt?: (info: {
     deliveryId: string;
     attemptNo: number;
@@ -63,7 +65,10 @@ export function createDeliveryHandler(options: DeliverOptions): DeliveryHandler 
       resolver: options.resolver,
       signal,
     });
-    const outcome = decideOutcome(result, ctx, { random: options.random });
+    const outcome = decideOutcome(result, ctx, {
+      random: options.random,
+      schedule: options.retrySchedule,
+    });
 
     const { attemptNo } = await queue.recordAttempt(
       claimed.id,

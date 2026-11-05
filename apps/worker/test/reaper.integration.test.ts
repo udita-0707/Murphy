@@ -202,6 +202,22 @@ describe("reaper", () => {
     expect(await only()).toMatchObject({ attemptCount: 6 });
   });
 
+  it("follows a replacement schedule when the poison guard counts a reap", async () => {
+    await fixture();
+    await db.prisma.delivery.updateMany({ data: { reapCount: FREE_REAPS } });
+    await claim("w");
+    await expireLeases();
+    const [reaped] = await reapOnce(queue, 100, [60_000]);
+    expect(reaped).toMatchObject({ outcome: "retry" });
+    expect((await only()).nextAttemptAt.getTime() - Date.now()).toBeGreaterThan(30_000);
+
+    await db.prisma.delivery.updateMany({ data: { nextAttemptAt: new Date(0) } });
+    await claim("w");
+    await expireLeases();
+    const [exhausted] = await reapOnce(queue, 100, [60_000]);
+    expect(exhausted).toMatchObject({ outcome: "dead" });
+  });
+
   it(`does not count the first ${FREE_REAPS} reaps, then counts each one as an attempt (poison guard)`, async () => {
     await fixture();
     for (let i = 1; i <= FREE_REAPS; i++) {

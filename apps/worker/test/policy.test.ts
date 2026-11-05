@@ -149,4 +149,15 @@ describe("decideOutcome", () => {
       decideOutcome(failure("aborted"), { attemptCount: 3, clientErrorCount: 1 }, mid),
     ).toEqual({ kind: "none" });
   });
+
+  it("uses a replacement schedule when given one, and exhausts at its end", () => {
+    const options = { random: () => 0.5, schedule: [100, 200] };
+    expect(decideOutcome(http(500), fresh, options)).toMatchObject({ kind: "retry", delayMs: 100 });
+    expect(
+      decideOutcome(http(500), { attemptCount: 1, clientErrorCount: 0 }, options),
+    ).toMatchObject({ kind: "retry", delayMs: 200 });
+    expect(
+      decideOutcome(http(500), { attemptCount: 2, clientErrorCount: 0 }, options),
+    ).toMatchObject({ kind: "dead", attemptCount: 3 });
+  });
 });
