@@ -1,0 +1,21 @@
+{
+  "name": "@murphy/chaos",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Chaos harness: real processes, injected faults, independent checks and a readable report.",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "summary": "tsx src/summary.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@murphy/core": "workspace:*",
+    "@murphy/db": "workspace:*",
+    "testcontainers": "^11.7.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0"
+  }
+}

@@ -132,6 +132,22 @@ importers:
 
   packages/simulator: {}
 
+  tools/chaos:
+    dependencies:
+      '@murphy/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      '@murphy/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      testcontainers:
+        specifier: ^11.7.0
+        version: 11.14.0
+    devDependencies:
+      tsx:
+        specifier: ^4.20.0
+        version: 4.23.15
+
   tools/demo-reset:
     dependencies:
       '@murphy/core':
