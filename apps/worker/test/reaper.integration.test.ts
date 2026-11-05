@@ -116,7 +116,7 @@ describe("reaper", () => {
     // w-slow finally finishes and tries to record success: logged, but the row is not touched.
     const result = await queue.recordAttempt(
       stale!.id,
-      "w-slow",
+      stale!.claimToken,
       {
         startedAt: new Date(),
         durationMs: 70_000,
@@ -129,6 +129,76 @@ describe("reaper", () => {
     );
     expect(result).toEqual({ applied: false, attemptNo: 2 });
     expect(await only()).toMatchObject({ status: "in_flight", lockedBy: "w-new", attemptCount: 0 });
+  });
+
+  // Regression, seed 1990363018: the guard could not tell two leases of the same worker apart.
+  it("ignores a late write from a lost lease when the same worker holds a newer lease", async () => {
+    await fixture();
+    const [stale] = await claim("w-same");
+    await expireLeases();
+    await reapOnce(queue);
+    const [current] = await claim("w-same");
+    expect(current!.claimToken).not.toBe(stale!.claimToken);
+
+    const log = {
+      startedAt: new Date(),
+      durationMs: 1,
+      requestHeaders: {},
+      responseStatus: 500,
+      responseBodySnippet: null,
+      error: null,
+    };
+    const failed = {
+      kind: "retry",
+      attemptCount: 1,
+      clientErrorCount: 0,
+      delayMs: 1_000,
+      lastStatusCode: 500,
+      lastError: "HTTP 500",
+    } as const;
+
+    expect(await queue.recordAttempt(stale!.id, stale!.claimToken, log, failed)).toEqual({
+      applied: false,
+      attemptNo: 2,
+    });
+    expect(await only()).toMatchObject({
+      status: "in_flight",
+      lockedBy: "w-same",
+      claimToken: current!.claimToken,
+      attemptCount: 0,
+    });
+
+    expect((await queue.recordAttempt(current!.id, current!.claimToken, log, failed)).applied).toBe(
+      true,
+    );
+    expect(await only()).toMatchObject({ status: "pending", attemptCount: 1, claimToken: null });
+  });
+
+  it("increments attempt_count in place, whatever value the outcome was computed from", async () => {
+    await fixture();
+    await db.prisma.delivery.updateMany({ data: { attemptCount: 5 } });
+    const [claimed] = await claim("w");
+    await queue.recordAttempt(
+      claimed!.id,
+      claimed!.claimToken,
+      {
+        startedAt: new Date(),
+        durationMs: 1,
+        requestHeaders: {},
+        responseStatus: 500,
+        responseBodySnippet: null,
+        error: null,
+      },
+      {
+        kind: "retry",
+        attemptCount: 1, // stale: computed from an old read
+        clientErrorCount: 0,
+        delayMs: 1_000,
+        lastStatusCode: 500,
+        lastError: "HTTP 500",
+      },
+    );
+    expect(await only()).toMatchObject({ attemptCount: 6 });
   });
 
   it(`does not count the first ${FREE_REAPS} reaps, then counts each one as an attempt (poison guard)`, async () => {

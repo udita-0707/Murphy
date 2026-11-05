@@ -23,8 +23,8 @@ worker.
   Finished deliveries (`succeeded`, `failed`, `dead`) keep their status.
 - Deliveries and attempts of a deleted endpoint stay queryable through the event and
   delivery APIs.
-- The worker's final write for an attempt is guarded by
-  `status = 'in_flight' AND locked_by = <this worker>`. If the endpoint was deleted
+- The worker's final write for an attempt is guarded by `status = 'in_flight'` and its lease
+  (the claim token since ADR 008). If the endpoint was deleted
   mid-request, the guard matches no row, so the delivery stays `cancelled`; the attempt itself
   is still logged.
 - Replaying a `cancelled` delivery returns `409 endpoint_deleted`.

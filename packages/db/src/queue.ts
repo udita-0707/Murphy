@@ -27,6 +27,8 @@ export interface ClaimedDelivery {
   nextAttemptAt: Date;
   lockedBy: string;
   lockedUntil: Date;
+  /** Identifies this lease. Later writes must present it (ADR 008). */
+  claimToken: string;
 }
 
 /** Everything the worker needs to send one attempt. */
@@ -133,18 +135,19 @@ export function createDeliveryQueue(prisma: PrismaClient) {
         UPDATE deliveries d
         SET status = 'in_flight',
             locked_by = ${workerId},
-            locked_until = now() + make_interval(secs => ${leaseMs / 1000})
+            locked_until = now() + make_interval(secs => ${leaseMs / 1000}),
+            claim_token = gen_random_uuid()
         FROM picked
         WHERE d.id = picked.id
         RETURNING d.id::text AS "id", d.project_id::text AS "projectId",
                   d.event_id::text AS "eventId", d.endpoint_id::text AS "endpointId",
                   d.status::text AS "status", d.attempt_count AS "attemptCount",
                   d.next_attempt_at AS "nextAttemptAt", d.locked_by AS "lockedBy",
-                  d.locked_until AS "lockedUntil"`;
+                  d.locked_until AS "lockedUntil", d.claim_token::text AS "claimToken"`;
     },
 
-    /** Loads the event, endpoint and counters for a delivery leased to this worker. */
-    async loadContext(deliveryId: string, workerId: string): Promise<DeliveryContext | null> {
+    /** Loads the event, endpoint and counters for a delivery under this lease. */
+    async loadContext(deliveryId: string, claimToken: string): Promise<DeliveryContext | null> {
       const rows = await prisma.$queryRaw<
         (Omit<DeliveryContext, "secretEnc"> & { secretEnc: Uint8Array })[]
       >`
@@ -155,7 +158,8 @@ export function createDeliveryQueue(prisma: PrismaClient) {
         FROM deliveries d
         JOIN events ev ON ev.id = d.event_id AND ev.project_id = d.project_id
         JOIN endpoints e ON e.id = d.endpoint_id AND e.project_id = d.project_id
-        WHERE d.id = ${deliveryId}::uuid AND d.status = 'in_flight' AND d.locked_by = ${workerId}`;
+        WHERE d.id = ${deliveryId}::uuid AND d.status = 'in_flight'
+          AND d.claim_token = ${claimToken}::uuid`;
       const row = rows[0];
       return row ? { ...row, secretEnc: Buffer.from(row.secretEnc) } : null;
     },
@@ -164,14 +168,16 @@ export function createDeliveryQueue(prisma: PrismaClient) {
      * Logs an attempt and applies its outcome in one transaction.
      *
      * attempt_no is the next number for this delivery and keeps increasing across retries,
-     * reaps and replays. The delivery update is guarded by status = 'in_flight' AND
-     * locked_by = workerId: if the delivery was cancelled (endpoint deleted, ADR 003) or its
-     * lease was reaped meanwhile, the attempt is still logged but the row is left alone.
-     * Returns whether the guarded update applied.
+     * reaps and replays. The delivery update is guarded by status = 'in_flight' AND the claim
+     * token of this lease: if the delivery was cancelled (endpoint deleted, ADR 003) or this
+     * lease was reaped or released meanwhile, the attempt is still logged but the row is left
+     * alone, even if the same worker holds a newer lease on it (ADR 008). attempt_count is
+     * incremented in place rather than written from a value read earlier. Returns whether the
+     * guarded update applied.
      */
     async recordAttempt(
       deliveryId: string,
-      workerId: string,
+      claimToken: string,
       attempt: AttemptLog,
       outcome: AttemptOutcome,
     ): Promise<{ applied: boolean; attemptNo: number }> {
@@ -195,32 +201,32 @@ export function createDeliveryQueue(prisma: PrismaClient) {
 
         if (outcome.kind === "none") return { applied: false, attemptNo };
 
-        const guard = Prisma.sql`id = ${deliveryId}::uuid AND status = 'in_flight' AND locked_by = ${workerId}`;
+        const guard = Prisma.sql`id = ${deliveryId}::uuid AND status = 'in_flight' AND claim_token = ${claimToken}::uuid`;
         let updated: number;
         switch (outcome.kind) {
           case "succeeded":
             updated = await tx.$executeRaw`
-              UPDATE deliveries SET status = 'succeeded', attempt_count = ${outcome.attemptCount},
+              UPDATE deliveries SET status = 'succeeded', attempt_count = attempt_count + 1,
                 client_error_count = ${outcome.clientErrorCount},
                 last_status_code = ${outcome.lastStatusCode}, last_error = NULL,
-                completed_at = now(), locked_by = NULL, locked_until = NULL
+                completed_at = now(), locked_by = NULL, locked_until = NULL, claim_token = NULL
               WHERE ${guard}`;
             break;
           case "retry":
             updated = await tx.$executeRaw`
-              UPDATE deliveries SET status = 'pending', attempt_count = ${outcome.attemptCount},
+              UPDATE deliveries SET status = 'pending', attempt_count = attempt_count + 1,
                 client_error_count = ${outcome.clientErrorCount},
                 next_attempt_at = now() + make_interval(secs => ${outcome.delayMs / 1000}),
                 last_status_code = ${outcome.lastStatusCode}, last_error = ${outcome.lastError},
-                locked_by = NULL, locked_until = NULL
+                locked_by = NULL, locked_until = NULL, claim_token = NULL
               WHERE ${guard}`;
             break;
           case "dead":
             updated = await tx.$executeRaw`
-              UPDATE deliveries SET status = 'dead', attempt_count = ${outcome.attemptCount},
+              UPDATE deliveries SET status = 'dead', attempt_count = attempt_count + 1,
                 client_error_count = ${outcome.clientErrorCount},
                 last_status_code = ${outcome.lastStatusCode}, last_error = ${outcome.lastError},
-                completed_at = now(), locked_by = NULL, locked_until = NULL
+                completed_at = now(), locked_by = NULL, locked_until = NULL, claim_token = NULL
               WHERE ${guard}`;
             if (updated > 0 && outcome.disableEndpoint) {
               await tx.$executeRaw`
@@ -291,14 +297,14 @@ export function createDeliveryQueue(prisma: PrismaClient) {
             await tx.$executeRaw`
               UPDATE deliveries SET status = 'dead', reap_count = ${reapCount},
                 attempt_count = ${attemptCount}, last_status_code = NULL, last_error = ${error},
-                completed_at = now(), locked_by = NULL, locked_until = NULL
+                completed_at = now(), locked_by = NULL, locked_until = NULL, claim_token = NULL
               WHERE id = ${row.id}::uuid`;
           } else {
             await tx.$executeRaw`
               UPDATE deliveries SET status = 'pending', reap_count = ${reapCount},
                 attempt_count = ${attemptCount}, last_error = ${error},
                 next_attempt_at = now() + make_interval(secs => ${(delayMs ?? 0) / 1000}),
-                locked_by = NULL, locked_until = NULL
+                locked_by = NULL, locked_until = NULL, claim_token = NULL
               WHERE id = ${row.id}::uuid`;
           }
           reaped.push({
@@ -326,7 +332,7 @@ export function createDeliveryQueue(prisma: PrismaClient) {
             status: "in_flight",
             ...(ids ? { id: { in: [...ids] } } : {}),
           },
-          data: { status: "pending", lockedBy: null, lockedUntil: null },
+          data: { status: "pending", lockedBy: null, lockedUntil: null, claimToken: null },
         })
         .then((r) => r.count);
     },

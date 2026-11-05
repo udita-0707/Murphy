@@ -139,7 +139,13 @@ export function createRepository(prisma: PrismaClient) {
           if (count === 0) return false;
           await tx.delivery.updateMany({
             where: { endpointId: id, projectId, status: { in: ["pending", "in_flight"] } },
-            data: { status: "cancelled", completedAt: now, lockedBy: null, lockedUntil: null },
+            data: {
+              status: "cancelled",
+              completedAt: now,
+              lockedBy: null,
+              lockedUntil: null,
+              claimToken: null,
+            },
           });
           return true;
         });
@@ -345,7 +351,7 @@ export type Repository = ReturnType<typeof createRepository>;
 /** Column updates shared by single and bulk replay. */
 const replayAssignments = Prisma.sql`
   status = 'pending', next_attempt_at = now(), attempt_count = 0, client_error_count = 0,
-  reap_count = 0, completed_at = NULL, locked_by = NULL, locked_until = NULL`;
+  reap_count = 0, completed_at = NULL, locked_by = NULL, locked_until = NULL, claim_token = NULL`;
 
 function toApiKey(row: {
   id: string;

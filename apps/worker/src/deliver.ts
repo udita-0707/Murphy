@@ -40,8 +40,8 @@ export function webhookId(eventId: string): string {
 export function createDeliveryHandler(options: DeliverOptions): DeliveryHandler {
   const now = options.now ?? (() => new Date());
   return async (claimed: ClaimedDelivery, signal: AbortSignal) => {
-    const { queue, workerId } = options;
-    const ctx = await queue.loadContext(claimed.id, workerId);
+    const { queue } = options;
+    const ctx = await queue.loadContext(claimed.id, claimed.claimToken);
     if (!ctx) return; // Cancelled or reaped since the claim.
 
     const body = JSON.stringify(ctx.payload);
@@ -67,7 +67,7 @@ export function createDeliveryHandler(options: DeliverOptions): DeliveryHandler 
 
     const { attemptNo } = await queue.recordAttempt(
       claimed.id,
-      workerId,
+      claimed.claimToken,
       {
         startedAt,
         durationMs: result.durationMs,

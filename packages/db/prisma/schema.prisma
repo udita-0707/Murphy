@@ -150,6 +150,8 @@ model Delivery {
   nextAttemptAt    DateTime       @default(now()) @map("next_attempt_at") @db.Timestamptz(6)
   lockedBy         String?        @map("locked_by")
   lockedUntil      DateTime?      @map("locked_until") @db.Timestamptz(6)
+  /// New on every claim; a worker's final write must present it (fencing, ADR 008).
+  claimToken       String?        @map("claim_token") @db.Uuid
   lastStatusCode   Int?           @map("last_status_code")
   lastError        String?        @map("last_error")
   createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)

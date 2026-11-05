@@ -22,7 +22,8 @@ export interface WorkerOptions {
 export class Worker {
   private running = false;
   private loop: Promise<void> | null = null;
-  private readonly inFlight = new Map<string, Promise<void>>();
+  /** Keyed by claim token: an old task and a re-claim of the same delivery are separate work. */
+  private readonly inFlight = new Map<string, { deliveryId: string; task: Promise<void> }>();
   private readonly abort = new AbortController();
   private wake: (() => void) | null = null;
 
@@ -45,19 +46,19 @@ export class Worker {
     this.wake?.();
     await this.loop;
 
-    const pending = [...this.inFlight.values()];
+    const pending = [...this.inFlight.values()].map((work) => work.task);
     const finished = await Promise.race([
       Promise.allSettled(pending).then(() => true),
       sleep(timeoutMs).then(() => false),
     ]);
     if (finished) return 0;
 
-    const leftover = [...this.inFlight.keys()];
+    const leftover = [...this.inFlight.values()].map((work) => work.deliveryId);
     this.abort.abort();
     // The guarded final write (status in_flight AND locked_by = me) cannot succeed once the
     // lease is released, so release first and let aborted handlers fail harmlessly.
     const released = await this.options.queue.releaseLeases(this.options.workerId, leftover);
-    await Promise.allSettled([...this.inFlight.values()]);
+    await Promise.allSettled([...this.inFlight.values()].map((work) => work.task));
     return released;
   }
 
@@ -92,10 +93,10 @@ export class Worker {
       .handler(delivery, this.abort.signal)
       .catch((err) => this.report(err, `delivery ${delivery.id}`))
       .finally(() => {
-        this.inFlight.delete(delivery.id);
+        this.inFlight.delete(delivery.claimToken);
         this.wake?.();
       });
-    this.inFlight.set(delivery.id, task);
+    this.inFlight.set(delivery.claimToken, { deliveryId: delivery.id, task });
   }
 
   private idle(ms: number | undefined): Promise<void> {

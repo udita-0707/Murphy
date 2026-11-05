@@ -36,9 +36,9 @@ exhausted it goes `dead` and appears in the DLQ. The attempt row says so, for ex
 `lease_expired: reaped 4 times, counted as attempt 1`. A replay resets `reap_count`.
 
 **Late writes.** A worker that was merely slow (not dead) may finish after its lease was
-reaped. Its final write is guarded by `status = 'in_flight' AND locked_by = <itself>` (ADR 003),
-so it logs its attempt but does not overwrite the state set by the reaper or by the worker
-that took over.
+reaped. Its final write is guarded by `status = 'in_flight'` and the claim token of its lease
+(ADR 008, which replaced the original `locked_by` guard), so it logs its attempt but does not
+overwrite the state set by the reaper or by whichever lease took over.
 
 **Lease length.** The lease (60 s) must exceed the request timeout (10 s) plus a 15 s safety
 margin; the worker refuses to start otherwise (ADR 004). A healthy request therefore always
