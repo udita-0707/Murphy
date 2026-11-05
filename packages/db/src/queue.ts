@@ -98,7 +98,9 @@ export function createDeliveryQueue(prisma: PrismaClient) {
      * then ranked within their project and taken round-robin (every project's 1st row, then
      * every project's 2nd row, ...), so a project with a huge backlog cannot crowd out a
      * project with one delivery. Deliveries of disabled, paused or deleted endpoints are
-     * skipped (parked).
+     * skipped (parked). The endpoint row is share-locked so a disable cannot commit during the
+     * claim, and an endpoint being changed is skipped until the next poll: waiting for it here
+     * could deadlock with a delete, which holds the endpoint and wants the delivery (ADR 009).
      */
     async claim(options: ClaimOptions): Promise<ClaimedDelivery[]> {
       const { workerId, batchSize, projectCap, leaseMs } = options;
@@ -125,6 +127,7 @@ export function createDeliveryQueue(prisma: PrismaClient) {
             ORDER BY d.next_attempt_at, d.id
             LIMIT ${projectCap}
             FOR UPDATE OF d SKIP LOCKED
+            FOR SHARE OF e SKIP LOCKED
           ) c
         ),
         picked AS (

@@ -1,4 +1,4 @@
-# ADR 009: Lock endpoint rows when creating or reviving deliveries
+# ADR 009: Lock endpoint rows when creating, reviving or claiming deliveries
 
 - Status: Accepted
 - Date: 2026-11-05
@@ -29,12 +29,34 @@ conflicts with the delete's update, so the two are serialised under READ COMMITT
 - If the writer holds it first, the delete waits. Its sweep is a later statement with a new
   snapshot, so it sees the committed row and cancels it.
 
+### The claim (added after chaos seed 2002)
+
+The claim read `e.status = 'active'` without locking the endpoint, so a disable could commit during
+the claim and a delivery that should have parked was sent. Chaos seed 2002 caught this through the
+audit history: one delivery, inside the 6 ms the disable took to commit.
+
+The claim now uses `FOR SHARE OF e SKIP LOCKED`:
+
+- If a claim holds the row first, a disable waits for it, so once a disable returns no later claim
+  can take that endpoint's work. A delivery claimed before that finishes normally.
+- If a disable or delete holds the row first, the claim skips that endpoint until its next poll.
+
+`SKIP LOCKED` matters. A plain `FOR SHARE` would make the claim wait while holding delivery rows,
+and a delete holds the endpoint while waiting for those rows, which is a deadlock.
+
 ## Consequences
 
 - No delivery is left waiting on a deleted endpoint by these paths.
 - Accepts on the same endpoint do not block each other (`FOR SHARE` is shared). They briefly block,
   and are blocked by, an update of that endpoint row, such as a `PATCH` or a 410 disabling it.
   Endpoint updates are rare, so this is not expected to matter; the phase 6 load test can confirm.
+- Every claim takes a share lock on the endpoints it touches. It is on the hot path, so the phase 6
+  load test should measure it. A `PATCH` on an endpoint waits for claims in progress, which are
+  short.
+- A delete and a 410 response disabling the same endpoint can still deadlock (one holds the endpoint
+  and wants the delivery, the other the reverse). This is not new. Postgres aborts one of them after
+  about a second: an aborted delete returns a 500 and can be retried, and an aborted attempt is
+  recovered by the reaper. Nothing is lost.
 - Many concurrent share locks on a row use a MultiXact, a small cost at high ingest rates.
 - A disable or pause racing with `accept` is unaffected in outcome, and was already safe: a row
   created just before the status change simply parks.
