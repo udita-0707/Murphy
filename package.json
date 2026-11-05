@@ -21,7 +21,8 @@
     "db:seed": "pnpm --filter @murphy/api db:seed",
     "demo:reset": "pnpm --filter @murphy/demo-reset start",
     "receiver": "pnpm --filter @murphy/dev-receiver start --",
-    "chaos": "pnpm --filter @murphy/chaos start --"
+    "chaos": "pnpm --filter @murphy/chaos start --",
+    "load": "pnpm --filter @murphy/chaos load --"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
