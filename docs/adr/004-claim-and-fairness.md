@@ -22,12 +22,13 @@ One SQL statement per claim, in `createDeliveryQueue().claim()` (`packages/db/sr
 2. For each such project, a `LATERAL` subquery selects that project's oldest due rows,
    `ORDER BY next_attempt_at LIMIT projectCap FOR UPDATE OF d SKIP LOCKED`. It joins
    `endpoints` and only takes rows whose endpoint is `active` and not soft-deleted, so
-   deliveries of disabled, paused or deleted endpoints stay parked.
+   deliveries of disabled, paused or deleted endpoints stay parked. The endpoint row is also
+   locked with `FOR SHARE OF e SKIP LOCKED`, so a disable cannot commit during a claim (ADR 009).
 3. Candidates are ranked within their project (`row_number()`), and the batch takes rank 1
    of every project, then rank 2, and so on, up to the batch size. Every project with due
    work gets a row before any project gets a second.
-4. The chosen rows are updated to `in_flight` with `locked_by = <worker id>` and
-   `locked_until = now() + lease` (60 s by default), and returned.
+4. The chosen rows are updated to `in_flight` with `locked_by = <worker id>`, a new
+   `claim_token` (ADR 008) and `locked_until = now() + lease` (60 s by default), and returned.
 
 A partial index `deliveries (project_id, next_attempt_at) WHERE status = 'pending'` serves
 step 2. Prisma's schema language cannot express partial indexes, so it lives only in the

@@ -40,32 +40,38 @@ packages/
 tools/
   dev-receiver/ @murphy/dev-receiver: local receiver that verifies signatures, simulates failures
   demo-reset/   @murphy/demo-reset: `pnpm demo:reset` (refuses outside local mode / localhost DB)
+  chaos/        @murphy/chaos: `pnpm chaos` and `pnpm load`, real processes, faults, report
 infra/          docker-compose and other infrastructure
 docs/
   BRIEF.md      problem brief, PRD and tech spec
   adr/          architecture decision records
   handover/     phase handover notes
+  chaos-report.md  generated evidence for "no accepted event is lost" (phase 3)
 ```
 
 ## Commands
 
 Run from the repo root.
 
-| Command           | What it does                                                        |
-| ----------------- | ------------------------------------------------------------------- |
-| `pnpm install`    | Install dependencies                                                |
-| `pnpm infra:up`   | Start Postgres 16 and Redis 7 (reads credentials from `.env`)       |
-| `pnpm infra:down` | Stop them (data stays in the `murphy-pgdata` volume)                |
-| `pnpm dev`        | Run the API (on `PORT`, default 3000) and the worker in watch mode  |
-| `pnpm receiver`   | Dev receiver on :4242 (`RECEIVER_SECRET=whsec_...`, `--fail N`)     |
-| `pnpm build`      | Build all packages                                                  |
-| `pnpm test`       | Run all tests (integration tests need Docker for Testcontainers)    |
-| `pnpm lint`       | ESLint across the workspace                                         |
-| `pnpm typecheck`  | `tsc --noEmit` across the workspace                                 |
-| `pnpm format`     | Prettier write                                                      |
-| `pnpm db:migrate` | Apply Prisma migrations (`prisma migrate deploy`) to `DATABASE_URL` |
-| `pnpm db:seed`    | Create a project and print its API key once                         |
-| `pnpm demo:reset` | Wipe and re-seed the local DB before every demo (local mode only)   |
+| Command           | What it does                                                          |
+| ----------------- | --------------------------------------------------------------------- |
+| `pnpm install`    | Install dependencies                                                  |
+| `pnpm infra:up`   | Start Postgres 16 and Redis 7 (reads credentials from `.env`)         |
+| `pnpm infra:down` | Stop them (data stays in the `murphy-pgdata` volume)                  |
+| `pnpm dev`        | Run the API (on `PORT`, default 3000) and the worker in watch mode    |
+| `pnpm receiver`   | Dev receiver on :4242 (`RECEIVER_SECRET=whsec_...`, `--fail N`)       |
+| `pnpm build`      | Build all packages                                                    |
+| `pnpm test`       | Run all tests (integration tests need Docker for Testcontainers)      |
+| `pnpm lint`       | ESLint across the workspace                                           |
+| `pnpm typecheck`  | `tsc --noEmit` across the workspace                                   |
+| `pnpm format`     | Prettier write                                                        |
+| `pnpm db:migrate` | Apply Prisma migrations (`prisma migrate deploy`) to `DATABASE_URL`   |
+| `pnpm db:seed`    | Create a project and print its API key once                           |
+| `pnpm demo:reset` | Wipe and re-seed the local DB before every demo (local mode only)     |
+| `pnpm chaos`      | Chaos run, needs Docker (`--seed N`, `--sabotage`, `--out`)           |
+| `pnpm load`       | Local ingestion baseline, needs Docker (`--seconds`, `--connections`) |
+
+`pnpm test` caches through Turborepo. To really re-run tests, use `pnpm exec turbo run test --force`.
 
 Copy `.env.example` to `.env` and fill it in (set a real `POSTGRES_PASSWORD` and use it in
 `DATABASE_URL`) before starting infra, the API or migrations.
@@ -89,7 +95,11 @@ Copy `.env.example` to `.env` and fill it in (set a real `POSTGRES_PASSWORD` and
 ## Scope notes
 
 - Phase 1 (done): API, core, db. Phase 2 (done): worker, retries, reaper, DLQ, replay, SSRF
-  guard, dev receiver. Phase 3 is the simulator.
+  guard, dev receiver. Phase 3 (done): reliability proof with property tests, chaos harness and
+  report. Phase 4 is the simulator.
+- `WORKER_RETRY_SCHEDULE_MS` is for local chaos runs only; the worker refuses it outside
+  `MURPHY_MODE=local` (ADR 010).
+- A disable stops new claims only. A delivery already `in_flight` is still sent (ADR 009).
 - `MURPHY_MODE` must default to `hosted`. Local development sets `MURPHY_MODE=local` in `.env`.
 - Delivery is at-least-once; receivers deduplicate on `webhook-id` (ADR 001, 006, 007).
 - The partial index `deliveries_pending_project_due_idx` exists only in migrations; delete

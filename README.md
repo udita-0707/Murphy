@@ -105,6 +105,23 @@ redirects are never followed. In hosted mode the API also rejects obviously unsa
 URLs when they are created or changed (`400 endpoint_url_not_allowed`): non-https, credentials
 in the URL, literal private, loopback or metadata IPs, and `localhost`.
 
+## Reliability evidence
+
+Murphy is tested by killing its workers, its API and its database while events are flowing, then
+checking the result against logs that Murphy did not write. The latest results, what they prove and
+what they do not prove are in [docs/chaos-report.md](docs/chaos-report.md).
+
+```sh
+pnpm chaos --seed 1001                       # about 2 minutes, needs Docker
+pnpm chaos --seed 1001 --sabotage lost-event # damages the data on purpose, so this run must fail
+pnpm load                                    # local ingestion baseline, not a benchmark
+```
+
+The exact claim: every delivery created for an accepted event is delivered, goes dead after retrying,
+is cancelled by a delete, or stays parked on a disabled endpoint. An event accepted while an endpoint
+is disabled, paused or deleted gets no delivery for that endpoint. Delivery is at-least-once, so
+receivers must deduplicate on `webhook-id`.
+
 ## Status and scope notes
 
 - **Redis** is started by `pnpm infra:up` but not used by any code yet. It is a default cut;
@@ -121,6 +138,7 @@ apps/worker           delivery worker: fair claim, SSRF-safe sender, retries, re
 packages/core         signing, retry policy, canonical JSON
 packages/db           Prisma schema, migrations, repository layer, delivery queue
 tools/dev-receiver    local receiver that verifies signatures and simulates failures
+tools/chaos           chaos harness, report and load baseline
 docs/adr              architecture decision records
 docs/handover         phase handover notes
 ```
