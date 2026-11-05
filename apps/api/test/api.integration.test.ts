@@ -391,7 +391,8 @@ describe("POST /v1/events fan-out", () => {
       expect(row.status).toBe("pending");
       expect(row.projectId).toBe(project.id);
       expect(row.attemptCount).toBe(0);
-      expect(row.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now());
+      // Postgres and the host have separate clocks, so allow for skew.
+      expect(row.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now() + 1_000);
       expect(row.nextAttemptAt.getTime()).toBeGreaterThanOrEqual(before.getTime() - 5_000);
     }
   });

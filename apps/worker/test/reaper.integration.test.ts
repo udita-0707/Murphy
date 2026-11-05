@@ -82,7 +82,8 @@ describe("reaper", () => {
       attemptCount: 0,
       reapCount: 1,
     });
-    expect(d.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now());
+    // Postgres and the host have separate clocks, so allow for skew.
+    expect(d.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now() + 1_000);
     expect(await attempts()).toMatchObject([
       { attemptNo: 1, error: "lease_expired", responseStatus: null },
     ]);

@@ -189,7 +189,8 @@ describe("POST /v1/deliveries/:id/replay", () => {
         reapCount: 0,
         completedAt: null,
       });
-      expect(row.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now());
+      // Postgres and the host have separate clocks, so allow for skew.
+      expect(row.nextAttemptAt.getTime()).toBeLessThanOrEqual(Date.now() + 1_000);
     },
   );
 
