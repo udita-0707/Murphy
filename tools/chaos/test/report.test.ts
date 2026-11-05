@@ -145,6 +145,15 @@ describe("summary document", () => {
     expect(text).toContain("# Full detail: seed 1");
   });
 
+  it("states the limit on the claim in its headline, with the real count", () => {
+    const counts = { ...result.counts, noDeliveryByDesign: 7 };
+    const run = buildReport({ ...meta, seed: 1 }, { ...result, counts });
+    const [headline] = renderSummary([run, run], [], "").split("## How to read this");
+    expect(headline).toContain("gets no delivery for that endpoint");
+    expect(headline).toContain("That happened 14 times");
+    expect(headline).not.toContain("none was lost");
+  });
+
   it("reports whether each negative control was caught", () => {
     expect(renderSummary([seed(1)], [control("lost-event", true)], "")).toContain(
       "failed, as it must",

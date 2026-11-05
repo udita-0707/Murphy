@@ -40,7 +40,9 @@ export function renderSummary(seeds: FullReport[], controls: FullReport[], notes
 
   return `# Murphy chaos report
 
-**${passed} of ${seeds.length} seeded runs passed.** Across them, Murphy accepted ${n(seeds.reduce((sum, r) => sum + (r.result.counts.eventsAcked ?? 0), 0))} events while its workers, API and database were being killed, and none was lost.
+**${passed} of ${seeds.length} seeded runs passed.** Across them, Murphy accepted ${n(seeds.reduce((sum, r) => sum + (r.result.counts.eventsAcked ?? 0), 0))} events while its workers, API and database were being killed. Every event was stored, and every delivery created for one was delivered, went dead after retrying, was cancelled by a delete, or stayed parked on a disabled endpoint.
+
+**The limit on that claim:** an event accepted while an endpoint is disabled, paused or deleted gets no delivery for that endpoint, and does not get one if the endpoint is re-enabled later. That happened ${n(seeds.reduce((sum, r) => sum + (r.result.counts.noDeliveryByDesign ?? 0), 0))} times across these runs, because the runs take endpoints out of service on purpose. It is intended behaviour, and the \`deliveries\` count in the 202 shows it.
 
 This file is generated from real runs by \`tools/chaos/src/summary.ts\`. To check it yourself, run
 \`pnpm chaos --seed ${sample.meta.seed}\`, which needs Docker and takes a few minutes. Counts will differ a
