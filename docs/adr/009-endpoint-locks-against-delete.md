@@ -60,9 +60,24 @@ claim never waits behind a disable or delete.
 - Accepts on the same endpoint do not block each other (`FOR SHARE` is shared). They briefly block,
   and are blocked by, an update of that endpoint row, such as a `PATCH` or a 410 disabling it.
   Endpoint updates are rare, so this is not expected to matter; the phase 6 load test can confirm.
-- Every claim takes a share lock on the endpoints it touches. It is on the hot path, so the phase 6
-  load test should measure it. A `PATCH` on an endpoint waits for claims in progress, which are
-  short.
+- Every claim takes a share lock on the endpoints it touches. Measured on 2026-11-06 with
+  `tools/chaos/src/claim-latency.ts`: the real claim against a copy without the lock, in alternating
+  rounds on one Postgres in Docker on a laptop, with 30,000 pending deliveries and 9 endpoints. These
+  are the ranges across three runs, with no endpoint being changed during them:
+
+  | Scenario                       | p50 without  | p50 with     | p50 change     | p95 change   |
+  | ------------------------------ | ------------ | ------------ | -------------- | ------------ |
+  | One claimer                    | 6.7–7.0 ms   | 6.8–7.1 ms   | +0.2% to +0.4% | +1% to +14%  |
+  | Three claimers                 | 8.1–10.7 ms  | 8.2–10.8 ms  | +0.5% to +1.7% | -8% to +11%  |
+  | Three claimers, live ingestion | 24.8–33.4 ms | 23.8–28.5 ms | -15% to -2%    | -32% to +10% |
+
+  So the cost at p50 is about 0.02 to 0.15 ms where it can be seen at all, and it is lost in noise
+  under ingestion. p95 changes sign between runs, so no p95 cost can be claimed or ruled out. This
+  covers claim time only, not a production-sized database, so the phase 6 load test should still
+  look at it.
+
+- A `PATCH` on an endpoint waits for claims in progress, which are short, and a claim skips an
+  endpoint being changed until its next poll.
 - A delete and a 410 response disabling the same endpoint can still deadlock (one holds the endpoint
   and wants the delivery, the other the reverse). This is not new. Postgres aborts one of them after
   about a second: an aborted delete returns a 500 and can be retried, and an aborted attempt is
