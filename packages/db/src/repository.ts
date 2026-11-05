@@ -219,14 +219,20 @@ export function createRepository(prisma: PrismaClient) {
        * Replays one finished delivery (succeeded, failed or dead): back to pending, due now,
        * with the backoff, client-error and reap counters reset (ADR 006). attempt_no in the
        * log keeps increasing. Cancelled deliveries and deliveries of deleted endpoints cannot
-       * be replayed.
+       * be replayed. The endpoint row is locked FOR SHARE, for the same reason as in accept.
        */
       async replay(projectId: string, id: string): Promise<ReplayResult> {
         const updated = await prisma.$executeRaw`
+          WITH live AS (
+            SELECT e.id FROM endpoints e
+            JOIN deliveries d ON d.endpoint_id = e.id AND d.project_id = e.project_id
+            WHERE d.id = ${id}::uuid AND d.project_id = ${projectId}::uuid AND e.deleted_at IS NULL
+            FOR SHARE OF e
+          )
           UPDATE deliveries d SET ${replayAssignments}
-          FROM endpoints e
+          FROM live
           WHERE d.id = ${id}::uuid AND d.project_id = ${projectId}::uuid
-            AND e.id = d.endpoint_id AND e.project_id = d.project_id AND e.deleted_at IS NULL
+            AND d.endpoint_id = live.id
             AND d.status IN ('succeeded', 'failed', 'dead')`;
         const row = await prisma.delivery.findFirst({
           where: { id, projectId },
@@ -264,6 +270,7 @@ export function createRepository(prisma: PrismaClient) {
             ORDER BY d.created_at, d.id
             LIMIT ${BULK_REPLAY_CAP}
             FOR UPDATE OF d SKIP LOCKED
+            FOR SHARE OF e
           )`;
       },
     },
@@ -275,6 +282,9 @@ export function createRepository(prisma: PrismaClient) {
        * INSERT ... ON CONFLICT DO NOTHING blocks until a concurrent insert of the same key
        * commits or rolls back, so exactly one request creates the event. Under READ COMMITTED
        * the follow-up SELECT then sees the winner's committed row.
+       *
+       * Fan-out locks the endpoint rows FOR SHARE so it cannot interleave with a delete (ADR 009):
+       * otherwise a delivery could commit after the delete's sweep and wait forever.
        */
       async accept(projectId: string, input: AcceptEventInput): Promise<AcceptEventResult> {
         return prisma.$transaction(async (tx) => {
@@ -294,7 +304,8 @@ export function createRepository(prisma: PrismaClient) {
               WHERE e.project_id = ${projectId}::uuid
                 AND e.status = 'active'
                 AND e.deleted_at IS NULL
-                AND (cardinality(e.event_filter) = 0 OR ${input.type} = ANY (e.event_filter))`;
+                AND (cardinality(e.event_filter) = 0 OR ${input.type} = ANY (e.event_filter))
+              FOR SHARE OF e`;
             return { outcome: "created", eventId: created.id, deliveries };
           }
 
