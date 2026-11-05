@@ -44,9 +44,13 @@ export function decide(input: {
   switch (profile) {
     case "control":
     case "toggled":
-    case "parked":
-    case "deleted":
       return { action: "ok", delayMs: 0 };
+    case "parked":
+      // Some failures, so retries are waiting when the endpoint is disabled.
+      return { action: roll < 0.4 ? "fail_500" : "ok", delayMs: 0 };
+    case "deleted":
+      // Always failing, so work is waiting when the endpoint is deleted and must be cancelled.
+      return { action: "fail_500", delayMs: 0 };
     case "flaky":
       return { action: roll < 0.3 ? "fail_500" : "ok", delayMs: 0 };
     case "slow":
