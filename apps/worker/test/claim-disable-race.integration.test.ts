@@ -96,6 +96,39 @@ describe("claiming while an endpoint changes", () => {
     expect(violations.map((v) => v.rule)).not.toContain("claimed_parked_delivery");
   });
 
+  it("a delivery already in flight when a disable commits still finishes normally", async () => {
+    await ingest("two");
+    const claimed = await queue.claim({
+      workerId: "w",
+      batchSize: 1,
+      projectCap: 1,
+      leaseMs: 60_000,
+    });
+    expect(claimed).toHaveLength(1);
+    await repo.endpoints.update(projectId, endpointId, { status: "disabled" });
+
+    const { applied } = await queue.recordAttempt(
+      claimed[0]!.id,
+      claimed[0]!.claimToken,
+      {
+        startedAt: new Date(),
+        durationMs: 1,
+        requestHeaders: {},
+        responseStatus: 200,
+        responseBodySnippet: "ok",
+        error: null,
+      },
+      { kind: "succeeded", attemptCount: 1, clientErrorCount: 0, lastStatusCode: 200 },
+    );
+    expect(applied).toBe(true);
+    const row = await db.prisma.delivery.findUniqueOrThrow({ where: { id: claimed[0]!.id } });
+    expect(row.status).toBe("succeeded");
+
+    // The new-claims guarantee: the other delivery stays parked.
+    expect(await claim()).toEqual([]);
+    expect(await db.prisma.delivery.count({ where: { status: "pending" } })).toBe(1);
+  });
+
   it("a claim skips an endpoint being disabled, without waiting for it", async () => {
     const hold = holdEndpointUpdate(endpointId, { status: "disabled" });
     await hold.isLocked;

@@ -38,11 +38,21 @@ audit history: one delivery, inside the 6 ms the disable took to commit.
 The claim now uses `FOR SHARE OF e SKIP LOCKED`:
 
 - If a claim holds the row first, a disable waits for it, so once a disable returns no later claim
-  can take that endpoint's work. A delivery claimed before that finishes normally.
+  can take that endpoint's work.
 - If a disable or delete holds the row first, the claim skips that endpoint until its next poll.
 
-`SKIP LOCKED` matters. A plain `FOR SHARE` would make the claim wait while holding delivery rows,
-and a delete holds the endpoint while waiting for those rows, which is a deadlock.
+**The guarantee covers new claims only.** A delivery already `in_flight` when a disable commits is
+still sent, and its result is recorded normally. Disabling an endpoint does not recall a request
+that a worker has already claimed, and that request may reach the receiver after the `PATCH`
+returns. Stopping traffic immediately would need the worker to re-check the endpoint just before
+sending, and even that could not recall a request already on the wire. A delete is different: it
+cancels the row, so the attempt is logged but its result is ignored (ADR 003). The request itself
+may still be sent.
+
+`SKIP LOCKED` matters. Soft delete locks the endpoint first and then cancels its deliveries. A plain
+`FOR SHARE` would make the claim wait for the endpoint while holding delivery rows, while the delete
+waits for those rows and holds the endpoint, which is a lock-order deadlock. With `SKIP LOCKED` the
+claim never waits behind a disable or delete.
 
 ## Consequences
 
