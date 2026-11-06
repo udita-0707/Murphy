@@ -130,6 +130,11 @@ receivers must deduplicate on `webhook-id`.
 - **Retention** (deleting old attempts and payloads) is not built; it is planned for phase 6
   only if time allows, so local data grows until you run `pnpm demo:reset`.
 
+- **Known flaky test:** `goes dead once attempts are exhausted` (`apps/worker/test/deliver.integration.test.ts`)
+  failed once in an early full-suite run, at 5,040 ms, and the cause was never found. It did not recur in 119
+  later runs (alone, under CPU load, and with its whole file). If it fails again, keep the full log. Do not run
+  `pnpm install` during tests: replacing Prisma's engine breaks the run in progress, though that fails differently.
+
 ## Repository
 
 ```
