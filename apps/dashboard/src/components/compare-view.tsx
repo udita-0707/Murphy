@@ -8,6 +8,7 @@ import type { SideState } from "@/lib/compare";
 import { compareUrl, type PairResponse } from "@/lib/scenarios";
 import { useRunWatch, type Watched } from "@/lib/use-run-watch";
 import { CompareBoard } from "./compare-board";
+import { DownloadComparison } from "./download-button";
 import { Empty } from "./states";
 
 export interface CompareParams {
@@ -97,6 +98,9 @@ export function CompareView({ naive, idempotent, naiveError, idempotentError }: 
         bothFinished && run ? (
           <div className="preview-actions">
             <RunAgain scenarioId={run.scenario_id} />
+            {left.side.phase === "done" && right.side.phase === "done" && (
+              <DownloadComparison naive={left.side.report} idempotent={right.side.report} />
+            )}
           </div>
         ) : null
       }

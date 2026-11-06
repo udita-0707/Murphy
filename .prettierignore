@@ -9,3 +9,4 @@ docs/BRIEF.md
 .next
 .hallmark
 .next-e2e
+apps/dashboard/src/export/generated

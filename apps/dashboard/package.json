@@ -29,6 +29,7 @@
     "build": "next build",
     "start": "next start -p 3100",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
+    "export-assets": "tsx scripts/export-assets.ts"
   }
 }

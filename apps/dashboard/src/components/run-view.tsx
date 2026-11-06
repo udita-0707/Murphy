@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { singleSide } from "@/lib/board";
 import { useRunWatch } from "@/lib/use-run-watch";
+import { DownloadRun } from "./download-button";
 import { ReportView } from "./report-view";
 import { ErrorState, Loading } from "./states";
 import { TimelineTable } from "./timeline-table";
@@ -15,7 +16,7 @@ export function RunView({ id }: { id: string }) {
     case "loading":
       return <Loading label="Loading the run" rows={4} />;
     case "done":
-      return <ReportView report={side.report} />;
+      return <ReportView report={side.report} actions={<DownloadRun report={side.report} />} />;
     case "did_not_start":
     case "unreadable":
       return (

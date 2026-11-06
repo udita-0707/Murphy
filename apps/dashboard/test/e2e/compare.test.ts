@@ -1,5 +1,7 @@
 // @vitest-environment node
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { createServer } from "node:net";
 import path from "node:path";
 import puppeteer, { type Browser, type Page } from "puppeteer-core";
@@ -150,6 +152,48 @@ describe("the split screen, on the real API, worker and demo target", () => {
     // The strict CSP did not block anything the page needs.
     expect(problems.filter((p) => /Content Security Policy|hydrat/i.test(p))).toEqual([]);
   }, 150_000);
+
+  it("downloads the comparison as one file that works with the network blocked", async () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "murphy-export-"));
+    try {
+      const cdp = await browser.target().createCDPSession();
+      await cdp.send("Browser.setDownloadBehavior", { behavior: "allow", downloadPath: dir });
+      const [button] = await page.$$("xpath/.//button[contains(., 'Download comparison')]");
+      await button!.click();
+      const deadline = Date.now() + 15_000;
+      let name: string | undefined;
+      while (!name) {
+        name = readdirSync(dir).find((f) => f.endsWith(".html"));
+        if (!name && Date.now() > deadline) throw new Error("nothing was downloaded");
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      expect(name).toBe("murphy-booking-duplicate-confirmation-comparison.html");
+      const html = readFileSync(path.join(dir, name), "utf8");
+      expect(html).toContain("2 vs 1, expected 1");
+
+      const offline = await browser.newPage();
+      const requests: string[] = [];
+      offline.on("request", (r) => requests.push(r.url()));
+      await offline.setViewport({ width: 1280, height: 800 });
+      await offline.setOfflineMode(true);
+      await offline.goto(`file://${path.join(dir, name)}`, { waitUntil: "load" });
+      const seen = await offline.evaluate(async () => {
+        await document.fonts.ready;
+        return {
+          fail: !!document.querySelector(".verdict--failed"),
+          pass: !!document.querySelector(".verdict--passed"),
+          font: document.fonts.check('800 96px "Chivo Mono"'),
+          background: getComputedStyle(document.body).backgroundColor,
+        };
+      });
+      await offline.close();
+      expect(seen.fail && seen.pass && seen.font).toBe(true);
+      expect(seen.background).not.toBe("rgba(0, 0, 0, 0)");
+      expect(requests.filter((u) => !u.startsWith("file:") && !u.startsWith("data:"))).toEqual([]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }, 60_000);
 
   it("removes both throwaway endpoints once the reports are stored", async () => {
     const res = await fetch(`${stack.apiUrl}/v1/endpoints`, {
