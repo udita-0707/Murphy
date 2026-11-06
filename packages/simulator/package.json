@@ -3,5 +3,15 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Murphy fintech event simulator: provider profiles, lifecycles and scenario runner."
+  "description": "Murphy event simulator: provider profiles, scenarios, compiler and run reports.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "fast-check": "^4.3.0"
+  }
 }
