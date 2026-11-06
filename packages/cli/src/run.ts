@@ -1,8 +1,16 @@
+import {
+  faultsOnAttempt,
+  MurphyApiClient,
+  MurphyClientError,
+  prepareDemoTarget,
+  startRun,
+  type LiveDelivery,
+} from "@murphy/client";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-/** Run endpoints use this filter, so a project's ordinary events never reach them (ADR 011). */
-export const SIMULATION_FILTER = "__murphy_simulation__";
+export { SIMULATION_FILTER } from "@murphy/client";
+
 const POLL_MS = 500;
 /** Longer than any library scenario. A run past this is reported, not waited on forever. */
 const WATCH_LIMIT_MS = 5 * 60_000;
@@ -100,19 +108,12 @@ export function readEnv(env: NodeJS.ProcessEnv): Env {
   };
 }
 
-interface LiveAttempt {
-  attempt_no: number;
-  at_ms: number | null;
-  status: number | null;
-  error: string | null;
-}
-
 export interface LiveRun {
   status: string;
   seed: number;
   scenario: { slug: string; name: string };
   steps: { id: string; event_type: string; fault_kinds: string[] }[];
-  deliveries: { delivery_id: string; step: string; attempts: LiveAttempt[] }[];
+  deliveries: LiveDelivery[];
   report_ready: boolean;
 }
 
@@ -121,17 +122,6 @@ export interface ReportSummary {
   scenario: { name: string };
   assertions: { kind: string; entity: string; status: string; reason: string }[];
   faults: { step: string; kind: string; realised_by: string; realised: boolean }[];
-}
-
-/** Which faults to show on one line: a retry or the first copy of a duplicate is not itself the fault. */
-function faultsOnLine(run: LiveRun, kinds: string[], step: string, id: string, attempt: number) {
-  const copies = run.deliveries
-    .filter((d) => d.step === step)
-    .sort((x, y) => (x.attempts[0]?.at_ms ?? Infinity) - (y.attempts[0]?.at_ms ?? Infinity));
-  const isLaterCopy = copies[0]?.delivery_id !== id;
-  return kinds.filter((kind) =>
-    kind === "duplicate" ? isLaterCopy : attempt === 1 && !isLaterCopy,
-  );
 }
 
 /** One timeline line per attempt that has not been shown yet, oldest first. */
@@ -146,8 +136,8 @@ export function newTimelineLines(run: LiveRun, shown: Set<string>): string[] {
     const step = steps.get(d.step);
     const at = `+${((attempt.at_ms ?? 0) / 1000).toFixed(2)}s`.padStart(8);
     const result = attempt.status === null ? (attempt.error ?? "no response") : attempt.status;
-    const kinds = faultsOnLine(
-      run,
+    const kinds = faultsOnAttempt(
+      run.deliveries,
       step?.fault_kinds ?? [],
       d.step,
       d.delivery_id,
@@ -182,66 +172,19 @@ export function summaryLines(report: ReportSummary): string[] {
   return lines;
 }
 
-class ApiClient {
-  constructor(private readonly env: Env) {}
-
-  async request<T>(method: string, route: string, body?: unknown): Promise<T> {
-    let res: Response;
-    try {
-      res = await fetch(`${this.env.apiUrl}${route}`, {
-        method,
-        headers: {
-          authorization: `Bearer ${this.env.apiKey}`,
-          ...(body === undefined ? {} : { "content-type": "application/json" }),
-        },
-        body: body === undefined ? undefined : JSON.stringify(body),
-      });
-    } catch {
-      throw new UsageError(
-        `cannot reach the Murphy API at ${this.env.apiUrl}. Is \`pnpm dev\` running?`,
+/** The CLI's wording for a client failure: what to start, for someone at a terminal. */
+function asUsageError(err: unknown, env: Env): unknown {
+  if (!(err instanceof MurphyClientError)) return err;
+  switch (err.kind) {
+    case "api_unreachable":
+      return new UsageError(`${err.message}. Is \`pnpm dev\` running?`);
+    case "target_unreachable":
+      return new UsageError(
+        `cannot reach the demo target at ${env.targetUrl}. Is \`pnpm demo:target\` running?`,
       );
-    }
-    const text = await res.text();
-    if (!res.ok) {
-      let message = text;
-      try {
-        message = (JSON.parse(text) as { error: { message: string } }).error.message;
-      } catch {
-        // Not our error format, so show it as it is.
-      }
-      throw new UsageError(`${method} ${route} answered ${res.status}: ${message}`);
-    }
-    if (res.headers.get("content-type")?.includes("json")) return JSON.parse(text) as T;
-    return text as T;
+    default:
+      return new UsageError(err.message);
   }
-}
-
-/** Creates a throwaway endpoint on the demo target, and gives the target its secret. */
-async function prepareDemoTarget(api: ApiClient, env: Env, handler: string) {
-  const url = `${env.targetUrl}/${handler}`;
-  const endpoint = await api.request<{ id: string; secret: string }>("POST", "/v1/endpoints", {
-    url,
-    description: `murphy run: ${handler}`,
-    event_filter: [SIMULATION_FILTER],
-  });
-  let added: Response;
-  try {
-    added = await fetch(`${env.targetUrl}/_secrets`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ secret: endpoint.secret }),
-    });
-  } catch {
-    await api.request("DELETE", `/v1/endpoints/${endpoint.id}`);
-    throw new UsageError(
-      `cannot reach the demo target at ${env.targetUrl}. Is \`pnpm demo:target\` running?`,
-    );
-  }
-  if (!added.ok) {
-    await api.request("DELETE", `/v1/endpoints/${endpoint.id}`);
-    throw new UsageError(`the demo target refused the secret: HTTP ${added.status}`);
-  }
-  return { endpointId: endpoint.id, stateUrl: `${url}/state` };
 }
 
 /** Runs a scenario and prints its timeline as it happens. Returns the process's exit code. */
@@ -251,7 +194,20 @@ export async function runCommand(
   print: (line: string) => void,
   cwd: string,
 ): Promise<number> {
-  const api = new ApiClient(env);
+  try {
+    return await runScenario(args, env, print, cwd);
+  } catch (err) {
+    throw asUsageError(err, env);
+  }
+}
+
+async function runScenario(
+  args: RunArgs,
+  env: Env,
+  print: (line: string) => void,
+  cwd: string,
+): Promise<number> {
+  const api = new MurphyApiClient({ apiUrl: env.apiUrl, token: env.apiKey });
   const filePath = path.resolve(cwd, args.file);
   let yaml: string;
   try {
@@ -263,17 +219,19 @@ export async function runCommand(
   const scenario = await api.request<{ id: string; slug: string }>("POST", "/v1/scenarios", {
     definition_yaml: yaml,
   });
-  const created = args.target ? await prepareDemoTarget(api, env, args.target) : null;
+  const created = args.target
+    ? await prepareDemoTarget(api, { targetUrl: env.targetUrl }, args.target)
+    : null;
   const endpointId = created?.endpointId ?? args.endpoint!;
   const stateUrl = created?.stateUrl ?? args.stateUrl!;
   const label = args.target ?? args.label ?? null;
 
-  const started = await api.request<{ id: string; seed: number }>("POST", "/v1/runs", {
-    scenario_id: scenario.id,
-    endpoint_id: endpointId,
-    state_url: stateUrl,
-    ...(label ? { target_label: label } : {}),
-    ...(args.seed !== undefined ? { seed: args.seed } : {}),
+  const started = await startRun(api, {
+    scenarioId: scenario.id,
+    endpointId,
+    stateUrl,
+    label,
+    seed: args.seed,
   });
 
   print(`murphy  ${scenario.slug}  against ${label ?? endpointId}  (seed ${started.seed})`);

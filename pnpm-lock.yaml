@@ -113,6 +113,10 @@ importers:
         version: 4.23.15
 
   packages/cli:
+    dependencies:
+      '@murphy/client':
+        specifier: workspace:*
+        version: link:../client
     devDependencies:
       '@murphy/core':
         specifier: workspace:*
@@ -135,6 +139,8 @@ importers:
       tsx:
         specifier: ^4.20.0
         version: 4.23.15
+
+  packages/client: {}
 
   packages/core:
     dependencies:

@@ -1,0 +1,14 @@
+{
+  "name": "@murphy/client",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared code for starting runs: the API client, demo target setup and timeline helpers.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  }
+}
