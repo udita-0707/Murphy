@@ -17,6 +17,7 @@ import {
 } from "@/lib/log";
 import { usePagedList } from "@/lib/use-paged-list";
 import {
+  AttemptPips,
   Empty,
   HideSimulated,
   ListRegion,
@@ -24,6 +25,7 @@ import {
   ReplayButton,
   SimulatedTag,
   StateBadge,
+  StatusFilter,
 } from "./log-parts";
 import { CodeBlock, ErrorState, Loading } from "./states";
 
@@ -174,7 +176,9 @@ function DeliveriesTable({
             <td>
               <StateBadge status={d.status} />
             </td>
-            <td>{d.attempt_count}</td>
+            <td>
+              <AttemptPips count={d.attempt_count} />
+            </td>
             <td>{lastResult(d)}</td>
             <td>{formatTime(d.created_at)}</td>
             {replay && (
@@ -187,15 +191,17 @@ function DeliveriesTable({
   );
 }
 
-export function DeliveriesView({ hide }: { hide: boolean }) {
-  const { list, reload, loadMore } = usePagedList<DeliveryRow>(
-    withSimulatedFilter("/api/v1/deliveries", hide),
-  );
+export function DeliveriesView({ hide, status = null }: { hide: boolean; status?: string | null }) {
+  const base = status
+    ? `/api/v1/deliveries?status=${encodeURIComponent(status)}`
+    : "/api/v1/deliveries";
+  const { list, reload, loadMore } = usePagedList<DeliveryRow>(withSimulatedFilter(base, hide));
   return (
     <section className="section">
       <LogHead title="Deliveries">
         <HideSimulated hide={hide} />
       </LogHead>
+      <StatusFilter status={status} />
       <ListRegion
         list={list}
         noun="deliveries"

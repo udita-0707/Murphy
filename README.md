@@ -164,7 +164,7 @@ pnpm demo:reset   # prints a new API key
 pnpm demo:stack   # builds the dashboard, then runs it with the API, demo target and control service
 ```
 
-Open http://127.0.0.1:3100, paste the key, and choose **Run on both handlers** on a booking scenario: the same scenario on a naive and an idempotent handler, side by side,
+Open http://127.0.0.1:3100 for the landing page, or http://127.0.0.1:3100/login to paste the key, and choose **Run on both handlers** on a booking scenario: the same scenario on a naive and an idempotent handler, side by side,
 with one figure from the two reports, such as "Booking effect 2 vs 1". Each result downloads as one HTML file that makes no external requests.
 
 - `pnpm dev` also runs the dashboard, on the same port, without the chaos panel. Use one or the other, not both.

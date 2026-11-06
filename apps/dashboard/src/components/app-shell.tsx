@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 import { signOut, useSignedIn } from "@/lib/session";
+import { MarkCap } from "./keycaps";
 import { Loading } from "./states";
 import { ThemeToggle, type Theme } from "./theme-toggle";
 
@@ -22,7 +23,7 @@ export function AppShell({ theme, children }: { theme: Theme; children: ReactNod
   const pathname = usePathname();
 
   useEffect(() => {
-    if (signedIn === false) router.replace("/");
+    if (signedIn === false) router.replace("/login");
   }, [signedIn, router]);
 
   return (
@@ -30,6 +31,7 @@ export function AppShell({ theme, children }: { theme: Theme; children: ReactNod
       <header className="topbar">
         <div className="container topbar__inner">
           <Link href="/scenarios" className="topbar__mark">
+            <MarkCap />
             Murphy
           </Link>
           <nav className="topbar__nav" aria-label="Main">

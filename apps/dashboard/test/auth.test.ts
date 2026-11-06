@@ -145,7 +145,7 @@ describe("the callback", () => {
     const calls = world();
     const { cookie, state } = startFlow();
     const res = await back(query(state), withCookie ? cookie : undefined);
-    expect(res.headers.get("location")).toBe(`${ORIGIN}/?login_error=state`);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?login_error=state`);
     expect(res.headers.getSetCookie().join()).not.toContain("murphy_session");
     expect(calls).toEqual([]);
   });
@@ -154,14 +154,14 @@ describe("the callback", () => {
     world();
     const { cookie, state } = startFlow();
     const res = await back(`error=<script>&state=${state}`, cookie);
-    expect(res.headers.get("location")).toBe(`${ORIGIN}/?login_error=denied`);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?login_error=denied`);
   });
 
   it("refuses a login that is not on the list, before making a session", async () => {
     const calls = world({ user: Response.json({ id: 9, login: "stranger" }) });
     const { cookie, state } = startFlow();
     const res = await back(`code=abc&state=${state}`, cookie);
-    expect(res.headers.get("location")).toBe(`${ORIGIN}/?login_error=not_allowed`);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?login_error=not_allowed`);
     expect(calls.some((c) => c.url.includes("/internal/"))).toBe(false);
   });
 
@@ -178,7 +178,7 @@ describe("the callback", () => {
     world(over);
     const { cookie, state } = startFlow();
     const res = await back(`code=abc&state=${state}`, cookie);
-    expect(res.headers.get("location")).toBe(`${ORIGIN}/?login_error=${code}`);
+    expect(res.headers.get("location")).toBe(`${ORIGIN}/login?login_error=${code}`);
     expect(res.headers.getSetCookie().join()).not.toContain("murphy_session=ms_");
   });
 });

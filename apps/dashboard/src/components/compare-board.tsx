@@ -15,6 +15,7 @@ import {
   type HandlerName,
   type SideState,
 } from "@/lib/compare";
+import { EffectTokens, SwimLanes } from "./elements";
 import { FaultChip } from "./fault-chip";
 import { PendingPlate, VerdictPlate } from "./verdict";
 
@@ -81,7 +82,10 @@ function Figure({ difference, more }: { difference: Difference; more: number }) 
   const valueClass = difference.numeric ? "figure__value" : "figure__value figure__value--text";
   return (
     <div className="figure" data-testid="figure">
-      <div className={valueClass}>{difference.naive}</div>
+      <div className="figure__side">
+        <div className={valueClass}>{difference.naive}</div>
+        <EffectTokens value={difference.naive} />
+      </div>
       <div className="figure__label">
         <span className="figure__name">{difference.name}</span>
         <span className="figure__expected">
@@ -93,7 +97,10 @@ function Figure({ difference, more }: { difference: Difference; more: number }) 
           </span>
         )}
       </div>
-      <div className={valueClass}>{difference.idempotent}</div>
+      <div className="figure__side">
+        <div className={valueClass}>{difference.idempotent}</div>
+        <EffectTokens value={difference.idempotent} />
+      </div>
     </div>
   );
 }
@@ -181,6 +188,8 @@ export function CompareBoard({
           </div>
         ))}
       </div>
+
+      <SwimLanes rows={rows} labels={["naive", "idempotent"]} />
 
       <table className="spine">
         <colgroup>

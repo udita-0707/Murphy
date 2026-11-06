@@ -35,6 +35,51 @@ export function HideSimulated({ hide }: { hide: boolean }) {
   );
 }
 
+const STATUSES = ["all", "succeeded", "pending", "in_flight", "failed", "dead"];
+
+/** Filter by status, kept in the URL with the rest of the filters. */
+export function StatusFilter({ status }: { status: string | null }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const choose = (next: string) => {
+    const query = new URLSearchParams(params.toString());
+    if (next === "all") query.delete("status");
+    else query.set("status", next);
+    const text = query.toString();
+    router.replace(text ? `${pathname}?${text}` : pathname);
+  };
+  return (
+    <div className="tray" role="group" aria-label="Filter by status">
+      {STATUSES.map((s) => (
+        <button
+          key={s}
+          type="button"
+          className="tray__key"
+          aria-pressed={(status ?? "all") === s}
+          onClick={() => choose(s)}
+        >
+          {s.replace("_", " ")}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** How many tries a delivery took, as marks beside the number. */
+export function AttemptPips({ count }: { count: number }) {
+  return (
+    <span className="attempts">
+      {count}
+      <span className="attempts__pips" aria-hidden="true">
+        {Array.from({ length: Math.min(count, 9) }, (_, i) => (
+          <span key={i} className="attempts__pip" />
+        ))}
+      </span>
+    </span>
+  );
+}
+
 export function LogHead({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <header className="board__head">

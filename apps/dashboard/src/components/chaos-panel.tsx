@@ -135,10 +135,29 @@ export function ChaosPanel() {
         <p className="board__meta">{refusedLine(traffic.refused)}</p>
       )}
 
+      {traffic && traffic.accepted > 0 && (
+        <div className="flow" aria-hidden="true">
+          {(
+            [
+              ["delivered", traffic.delivered],
+              ["retrying", traffic.retrying],
+              ["dead", traffic.dead],
+              ["lost", traffic.lost],
+            ] as const
+          ).map(([name, value]) => (
+            <span
+              key={name}
+              className={`flow__part flow__part--${name}`}
+              style={{ flexGrow: value }}
+            />
+          ))}
+        </div>
+      )}
+
       <div className="chaos">
         <button
           type="button"
-          className="btn"
+          className="btn btn--big btn--danger"
           disabled={busy !== null || workers.every((w) => w.state !== "running")}
           onClick={() => void act("kill-worker")}
         >
@@ -146,7 +165,7 @@ export function ChaosPanel() {
         </button>
         <button
           type="button"
-          className="btn"
+          className="btn btn--big btn--danger"
           disabled={busy !== null || restarting}
           aria-busy={restarting}
           onClick={() => void act("restart-postgres")}
@@ -166,7 +185,7 @@ export function ChaosPanel() {
           </label>
           <button
             type="button"
-            className="btn"
+            className="btn btn--big btn--danger"
             disabled={busy !== null || parsedSeconds === null}
             onClick={() => void act("target-fail", { seconds: parsedSeconds })}
           >
@@ -185,14 +204,25 @@ export function ChaosPanel() {
           <h2 className="card__head">Processes</h2>
           <ul className="plain-list">
             {workers.map((w) => (
-              <li key={w.name}>
+              <li key={w.name} className="light-row">
+                <span className={`light light--${w.state}`} aria-hidden="true" />
                 <span className={w.state === "crashed" ? "field__error" : undefined}>
                   {workerLine(w)}
                 </span>
               </li>
             ))}
-            <li>Postgres: {restarting ? "restarting" : "not being restarted"}</li>
-            <li>
+            <li className="light-row">
+              <span
+                className={`light light--${restarting ? "restarting" : "running"}`}
+                aria-hidden="true"
+              />
+              Postgres: {restarting ? "restarting" : "not being restarted"}
+            </li>
+            <li className="light-row">
+              <span
+                className={`light light--${!target ? "crashed" : target.failing ? "restarting" : "running"}`}
+                aria-hidden="true"
+              />
               Demo target:{" "}
               {!target
                 ? "not answering"

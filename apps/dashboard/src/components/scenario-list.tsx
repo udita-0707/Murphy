@@ -12,6 +12,7 @@ import {
   type PairResponse,
   type ScenarioRow,
 } from "@/lib/scenarios";
+import { DifficultyPips } from "./elements";
 import { FaultChip } from "./fault-chip";
 import { Empty, ErrorState, Loading } from "./states";
 
@@ -55,9 +56,12 @@ function Row({ row, primary }: { row: ScenarioRow; primary: boolean }) {
 
   const disabled = busy !== null;
   return (
-    <li className="scenario">
+    <li className={primary ? "scenario scenario--lead" : "scenario"}>
       <div className="scenario__main">
-        <h2 className="scenario__name">{row.name}</h2>
+        <div className="scenario__top">
+          <h2 className="scenario__name">{row.name}</h2>
+          <DifficultyPips level={row.difficulty} />
+        </div>
         <p className="scenario__meta">
           {[
             row.summary?.provider_label,
@@ -90,7 +94,7 @@ function Row({ row, primary }: { row: ScenarioRow; primary: boolean }) {
         >
           {busy === "both" ? "Starting both" : "Run on both handlers"}
         </button>
-        <div className="scenario__single">
+        <div className="scenario__single" role="group" aria-label="Run on one handler">
           {(["naive", "idempotent"] as const).map((handler) => (
             <button
               type="button"
@@ -110,8 +114,16 @@ function Row({ row, primary }: { row: ScenarioRow; primary: boolean }) {
   );
 }
 
+const PROVIDERS = [
+  { id: "all", label: "All" },
+  { id: "booking", label: "Booking" },
+  { id: "payments", label: "Payments" },
+  { id: "upi", label: "UPI" },
+];
+
 export function ScenarioList() {
   const [load, setLoad] = useState<Load>({ state: "loading" });
+  const [provider, setProvider] = useState("all");
 
   const fetchRows = useCallback(() => {
     setLoad({ state: "loading" });
@@ -128,7 +140,24 @@ export function ScenarioList() {
 
   return (
     <section className="section">
-      <h1 className="section__head">Pick something to break</h1>
+      <header className="board__head">
+        <h1 className="section__head board__heading">Pick something to break</h1>
+        {load.state === "ready" && load.rows.length > 0 && (
+          <div className="tray" role="group" aria-label="Filter by provider">
+            {PROVIDERS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className="tray__key"
+                aria-pressed={provider === p.id}
+                onClick={() => setProvider(p.id)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </header>
       {load.state === "loading" && <Loading label="Loading scenarios" rows={4} />}
       {load.state === "error" && (
         <ErrorState title="The scenarios did not load.">
@@ -148,9 +177,11 @@ export function ScenarioList() {
       )}
       {load.state === "ready" && load.rows.length > 0 && (
         <ul className="scenarios">
-          {load.rows.map((row, i) => (
-            <Row key={row.id} row={row} primary={i === 0} />
-          ))}
+          {load.rows
+            .filter((row) => provider === "all" || row.summary?.provider === provider)
+            .map((row) => (
+              <Row key={row.id} row={row} primary={row.id === load.rows[0]?.id} />
+            ))}
         </ul>
       )}
     </section>

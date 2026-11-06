@@ -44,14 +44,14 @@
   --z-raised: 10;
   --z-sticky-nav: 300;
 
-  --color-paper: oklch(43% 0.17 258);
-  --color-paper-2: oklch(50% 0.17 258);
-  --color-paper-3: oklch(34% 0.15 260);
+  --color-paper: oklch(23% 0.085 262);
+  --color-paper-2: oklch(30% 0.115 260);
+  --color-paper-3: oklch(18% 0.07 265);
   --color-ink: oklch(99% 0.005 90);
   --color-ink-2: oklch(96% 0.015 240);
-  --color-muted: oklch(92% 0.03 240);
-  --color-rule: oklch(56% 0.14 258);
-  --color-border: oklch(56% 0.14 258);
+  --color-muted: oklch(85% 0.04 245);
+  --color-rule: oklch(38% 0.1 258);
+  --color-border: oklch(38% 0.1 258);
   --color-card: oklch(97% 0.012 85);
   --color-card-ink: oklch(26% 0.09 255);
   --color-card-muted: oklch(42% 0.05 255);
@@ -77,23 +77,29 @@
   --color-amber: oklch(86% 0.16 88);
   --color-amber-ink: oklch(24% 0.05 80);
   /* Verdict marks only. */
-  --color-fail: oklch(74% 0.19 33);
+  --color-fail: oklch(71% 0.2 31);
   --color-fail-ink: oklch(20% 0.05 30);
+  --color-fail-edge: oklch(48% 0.17 29);
+  --color-fail-hover: oklch(76% 0.18 33);
   --color-fail-text: oklch(89% 0.08 30);
   --color-pass: oklch(88% 0.16 165);
   --color-errored-text: oklch(86% 0.16 88);
 
   /* Keys: a face, and the edge that shows until it is pressed. */
   --key-travel: 4px;
-  --color-key: oklch(54% 0.17 258);
-  --color-key-hover: oklch(58% 0.17 258);
-  --color-key-edge: oklch(30% 0.14 260);
+  --color-key: oklch(46% 0.17 258);
+  --color-key-hover: oklch(51% 0.17 258);
+  --color-key-edge: oklch(33% 0.15 260);
   --color-key-ink: oklch(99% 0.005 90);
 
   --font-display: "Gabarito", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-outlier: var(--font-display);
   --font-code: ui-monospace, "SF Mono", Menlo, monospace;
+  --cap-face: var(--color-card);
+  --cap-ink: var(--color-card-ink);
+  --cap-edge: var(--card-key-edge);
+  --lane-label: 6rem;
   --radius-card: 20px;
   --radius-control: 14px;
   --radius-pill: 999px;
@@ -102,8 +108,9 @@
   --rule-verdict: 3px;
   --control-height: 44px;
   --shadow-card: 0 14px 32px -16px oklch(15% 0.06 257 / 0.6);
+  --tile-edge: inset 0 1px 0 oklch(100% 0.005 250 / 0.07);
   --shadow-pressed: inset 0 2px 4px oklch(15% 0.08 260 / 0.4);
-  --color-field-edge: oklch(82% 0.07 245);
+  --color-field-edge: oklch(70% 0.09 245);
   --tracking-display: -0.025em;
   --display-weight: 800;
 }
@@ -124,6 +131,8 @@
   --color-amber: oklch(72% 0.17 70);
   --color-fail: oklch(53% 0.2 29);
   --color-fail-ink: oklch(99.5% 0.003 85);
+  --color-fail-edge: oklch(36% 0.15 29);
+  --color-fail-hover: oklch(57% 0.2 29);
   --color-fail-text: oklch(47% 0.18 29);
   --color-pass: oklch(42% 0.12 165);
   --color-errored-text: oklch(26% 0.09 255);
@@ -132,6 +141,10 @@
   --color-key-edge: oklch(78% 0.035 85);
   --color-key-ink: oklch(26% 0.09 255);
   --shadow-card: 0 14px 32px -16px oklch(40% 0.05 80 / 0.45);
+  --cap-face: oklch(26% 0.09 255);
+  --cap-ink: oklch(97% 0.012 85);
+  --cap-edge: oklch(16% 0.07 260);
+  --tile-edge: inset 0 1px 0 oklch(100% 0.005 85 / 0.5);
   --shadow-pressed: inset 0 2px 4px oklch(40% 0.05 80 / 0.25);
   --color-field-edge: oklch(50% 0.05 255);
 }

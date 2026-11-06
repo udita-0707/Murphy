@@ -134,7 +134,7 @@ const verdictOf = (side: string) =>
 
 describe("the split screen, on the real API, worker and demo target", () => {
   it("signs in, runs on both handlers, and shows FAIL against PASS with the real figure", async () => {
-    await page.goto(base, { waitUntil: "networkidle0" });
+    await page.goto(`${base}/login`, { waitUntil: "networkidle0" });
     await page.type('input[name="api-key"]', stack.apiKey);
     await page.click('button[type="submit"]');
     await page.waitForFunction(() => location.pathname === "/scenarios", { timeout: 15_000 });
@@ -252,7 +252,7 @@ describe("GitHub login, in a real browser against a mock GitHub", () => {
     const context = await browser.createBrowserContext();
     const tab = await context.newPage();
     try {
-      await tab.goto(base, { waitUntil: "networkidle0" });
+      await tab.goto(`${base}/login`, { waitUntil: "networkidle0" });
       await tab.click('a[href="/auth/github/start"]');
       await tab.waitForFunction(() => location.pathname === "/scenarios", { timeout: 20_000 });
 
@@ -291,7 +291,7 @@ describe("GitHub login, in a real browser against a mock GitHub", () => {
       // Sign out, and the old token no longer works anywhere.
       const [signOut] = await tab.$$("xpath/.//button[contains(., 'Sign out')]");
       await signOut!.click();
-      await tab.waitForFunction(() => location.pathname === "/", { timeout: 15_000 });
+      await tab.waitForFunction(() => location.pathname === "/login", { timeout: 15_000 });
       const res = await fetch(`${stack.apiUrl}/v1/scenarios`, {
         headers: { authorization: `Bearer ${session!.value}` },
       });
@@ -302,7 +302,7 @@ describe("GitHub login, in a real browser against a mock GitHub", () => {
   }, 90_000);
 
   it("the login page offers GitHub next to the API key", async () => {
-    const html = await fetch(base).then((r) => r.text());
+    const html = await fetch(`${base}/login`).then((r) => r.text());
     expect(html).toContain('href="/auth/github/start"');
     expect(html).toContain('name="api-key"');
   }, 20_000);

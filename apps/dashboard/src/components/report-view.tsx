@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { sideFromReport, singleSide } from "@/lib/board";
 import { assertionName } from "@/lib/faults";
 import type { RunReport } from "@/lib/types";
+import { AssertionMeter, SwimLanes } from "./elements";
 import { FaultChip } from "./fault-chip";
 import { CheckGlyph, CrossGlyph } from "./glyphs";
 import { TimelineTable } from "./timeline-table";
@@ -131,6 +132,7 @@ export function ReportView({ report, actions }: { report: RunReport; actions?: R
       </dl>
 
       <Section title="Assertions">
+        <AssertionMeter statuses={report.assertions.map((a) => a.status)} />
         <div className="cards">
           {report.assertions.map((a) => (
             <div
@@ -177,6 +179,7 @@ export function ReportView({ report, actions }: { report: RunReport; actions?: R
       </Section>
 
       <Section title="Timeline" note="Every attempt, in the order it really started.">
+        <SwimLanes rows={rows} />
         <TimelineTable rows={rows} />
       </Section>
 

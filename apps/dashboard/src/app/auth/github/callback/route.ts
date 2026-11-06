@@ -23,7 +23,7 @@ function redirect(location: string, cookies: string[]): Response {
 
 /** Fixed codes only: nothing from the request is ever shown back on the sign-in page. */
 const fail = (config: AuthConfig, code: string, clear: string) =>
-  redirect(`${config.origin}/?login_error=${code}`, [clear]);
+  redirect(`${config.origin}/login?login_error=${code}`, [clear]);
 
 async function githubUser(
   config: AuthConfig,

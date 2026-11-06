@@ -1,5 +1,35 @@
 [
  {
+  "scope": "page",
+  "shape": "Stat-Led",
+  "theme": "squeeze",
+  "axes": "mid/geometric-sans/warm",
+  "hero": "Corridor: the product replayed beside the headline",
+  "nav": "slab",
+  "footer": "mast",
+  "imagery": "the product built, real run data",
+  "photos": [],
+  "entry": "none",
+  "fingerprint": "squeeze-night-keycaps-replay-board",
+  "sections": [
+   "hero replay",
+   "stats",
+   "fault keyboard",
+   "before and after",
+   "verdicts",
+   "library",
+   "start",
+   "mast"
+  ],
+  "signature": "a real run replayed by pressing a key, and the word as keycaps with one come loose",
+  "waived": [
+   "39b tall keys"
+  ],
+  "prompt": "Murphy landing page, more elements, same colours",
+  "date": "2026-11-06",
+  "mode": "build"
+ },
+ {
   "scope": "app",
   "shape": "app screen",
   "theme": "squeeze",

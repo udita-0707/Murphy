@@ -13,6 +13,12 @@ light backup for a bright room, and uses the same token names.
 - **Two added colours.** Tomato and mint are for verdict marks only.
 - **Mono for code only.** Squeeze allows no mono, but a JSON payload needs it. It uses the system's mono face.
 
+## Dark Room and new elements
+
+Udita liked the colours but wanted more. The dark theme is now a real night blue, so the same peach, yellow, tomato and mint pop harder.
+
+New elements, all from real data: swimlanes of attempts, effect tokens under the figure, an assertion meter, fault glyphs, difficulty pips, filter trays, a live delivery bar, status lights, big tomato chaos keys, and the word as keycaps with one come loose. The landing page has a real run replayed by pressing a key, and a keyboard of faults.
+
 ## Verdicts
 
 Each one must read correctly in greyscale. The word is always present.
@@ -25,6 +31,7 @@ Each one must read correctly in greyscale. The word is always present.
 
 ## Surfaces, type, motion
 
+- Verdict plates sit slightly crooked, like a stamp.
 - Tiles, not boxes: a tile is the ground one step lighter, with no border. The warm-white card is the one raised surface, on sign-in.
 - Gabarito 800 for heads and figures, Manrope 500 and 700 for the rest. Self-hosted, so that exports can embed them.
 - Sizes: labels 15px, body 16, timeline rows 17, heads 24, verdict word 64, diverging figures 88. A large projector resolution scales the whole set by 125%.

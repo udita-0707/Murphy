@@ -41,9 +41,12 @@
 
 .verdict--failed .verdict__plate {
   background: var(--color-fail);
+  box-shadow: 0 5px 0 var(--color-fail-edge);
+  transform: rotate(-1.2deg);
   color: var(--color-fail-ink);
 }
 .verdict--passed .verdict__plate {
+  transform: rotate(0.8deg);
   box-shadow: inset 0 0 0 var(--rule-verdict) var(--color-pass);
   color: var(--color-pass);
 }
@@ -118,7 +121,9 @@
 
 /* Fault chips: Engine is solid, Target is outlined, and both say which. */
 .chip {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
   padding: max(var(--space-2xs), 0.35em) max(var(--space-sm), 0.75em);
   border-radius: var(--radius-pill);
   font-size: var(--text-label);
@@ -263,8 +268,80 @@
   font-weight: 500;
 }
 
+/* Attempts on a clock. Diamonds carry a fault, hollow marks got no 2xx, faint ones are not sent yet. */
+.lanes {
+  display: grid;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-3);
+  box-shadow: var(--tile-edge);
+}
+.lane {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+.lane__label {
+  flex: 0 0 var(--lane-label);
+  font-size: var(--text-label);
+  font-weight: 700;
+  color: var(--color-muted);
+}
+.lane__track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 22px;
+}
+.lane__track::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  height: var(--rule-bar);
+  margin-top: -1px;
+  border-radius: var(--radius-pill);
+  background: var(--color-rule);
+}
+.lane__mark {
+  position: absolute;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  margin: calc(var(--space-xs) * -1) 0 0 calc(var(--space-xs) * -1);
+  border-radius: 50%;
+  background: var(--color-ink);
+}
+.lane__mark--due {
+  opacity: 0.35;
+}
+.lane__mark--fault {
+  border-radius: 3px;
+  background: var(--color-figure);
+  transform: rotate(45deg);
+}
+.lane__mark--bad {
+  background: var(--color-paper-3);
+  box-shadow: inset 0 0 0 3px var(--color-ink);
+}
+.lane__mark--fault.lane__mark--bad {
+  background: var(--color-paper-3);
+  box-shadow: inset 0 0 0 3px var(--color-figure);
+}
+.lanes__axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: var(--color-muted);
+  font-variant-numeric: tabular-nums;
+}
+.lanes__axis--labelled {
+  margin-left: calc(var(--lane-label) + var(--space-md));
+}
+
 /* The diverging figure ends the spine. */
 .figure {
+  box-shadow: var(--tile-edge);
   display: grid;
   grid-template-columns: var(--tracks);
   gap: var(--space-lg);
@@ -283,6 +360,25 @@
   text-align: center;
   overflow-wrap: anywhere;
   font-variant-numeric: lining-nums tabular-nums;
+}
+.figure__side {
+  display: grid;
+  gap: var(--space-2xs);
+  justify-items: center;
+  min-width: 0;
+}
+.tokens {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2xs);
+}
+.token {
+  width: 22px;
+  height: 14px;
+  border-radius: 4px;
+  background: var(--color-figure);
+  box-shadow: 0 3px 0 var(--color-key-edge);
 }
 .figure__value--text {
   font-size: var(--text-head);
@@ -330,6 +426,43 @@
   color: var(--color-live);
 }
 
+/* Drawn marks. */
+.glyph {
+  width: 1.15em;
+  height: 1.15em;
+  flex: none;
+  vertical-align: -0.2em;
+  display: inline-block;
+}
+.meter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+}
+.meter__cell {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+}
+.meter__cell svg {
+  width: 16px;
+  height: 16px;
+}
+.meter__cell--fail {
+  background: var(--color-fail);
+  color: var(--color-fail-ink);
+}
+.meter__cell--pass {
+  box-shadow: inset 0 0 0 var(--rule-bar) var(--color-pass);
+  color: var(--color-pass);
+}
+.meter__cell--not_evaluated {
+  outline: var(--rule-bar) dashed var(--color-amber);
+  outline-offset: calc(var(--rule-bar) * -1);
+}
+
 /* The single run report. */
 .report {
   display: grid;
@@ -373,6 +506,7 @@
   gap: var(--space-md);
 }
 .card {
+  box-shadow: var(--tile-edge);
   display: grid;
   gap: var(--space-xs);
   align-content: start;
@@ -478,6 +612,7 @@ h2.card__head {
 
 /* Loading, empty and error, for every region that loads data. */
 .state {
+  box-shadow: var(--tile-edge);
   display: grid;
   gap: var(--space-sm);
   justify-items: start;
@@ -526,7 +661,6 @@ h2.card__head {
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -583,6 +717,12 @@ h2.card__head {
   :root {
     --text-figure: 4.25rem;
     --text-verdict: 3.25rem;
+  }
+}
+/* Keep the figure on a short screen: the table below has the same facts as the lanes. */
+@media (min-width: 60.01rem) and (max-height: 54rem) {
+  .board > .lanes {
+    display: none;
   }
 }
 @media (max-width: 60rem) {

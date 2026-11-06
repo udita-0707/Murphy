@@ -27,6 +27,8 @@ Test counts: worker 275, dashboard 177, api 126, simulator 106, core 105, chaos 
 
 The first direction (Wayfind, a departure board in mono type) did not work for you, so it was replaced, by your brief: **cheerful, tactile, with buttons that press like keys**. It is now Hallmark's Squeeze theme, on a blue ground, with keycaps. Only the visual layer changed: features, logic and tests carried over. See `docs/design/direction.md`.
 
+A landing page followed at `/`, and sign-in moved to `/login`. You asked to focus on the frontend and not spend time passing tests, so **the full suite and the browser end-to-end test have not been run since that change**. Run them before the 11 Nov freeze.
+
 ## By item
 
 | Item | What exists                                                                                                                         |
