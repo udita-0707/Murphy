@@ -128,3 +128,32 @@ export async function startPair(
   const [naive, idempotent] = await Promise.all(DEMO_HANDLERS.map(side));
   return { naive: naive!, idempotent: idempotent! };
 }
+
+/**
+ * Deletes a run's throwaway endpoint, only once its report is stored, and only if a run on the demo target
+ * created it: it never deletes an endpoint it did not create. Safe to call twice.
+ */
+export async function cleanupDemoEndpoint(
+  api: MurphyApiClient,
+  runId: string,
+): Promise<"deleted" | "kept"> {
+  const run = await api.request<{ endpoint_id: string; report_ready: boolean }>(
+    "GET",
+    `/v1/runs/${runId}`,
+  );
+  if (!run.report_ready) return "kept";
+  let endpoint: { description: string | null; event_filter: string[] };
+  try {
+    endpoint = await api.request("GET", `/v1/endpoints/${run.endpoint_id}`);
+  } catch (err) {
+    if (err instanceof MurphyClientError && err.status === 404) return "kept";
+    throw err;
+  }
+  const ours =
+    endpoint.description?.startsWith("murphy run: ") &&
+    endpoint.event_filter.length === 1 &&
+    endpoint.event_filter[0] === SIMULATION_FILTER;
+  if (!ours) return "kept";
+  await api.request("DELETE", `/v1/endpoints/${run.endpoint_id}`);
+  return "deleted";
+}

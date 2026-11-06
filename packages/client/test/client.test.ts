@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  cleanupDemoEndpoint,
   copyNumber,
   faultsOnAttempt,
   MurphyApiClient,
@@ -178,6 +179,45 @@ describe("startPair", () => {
     const outcomes = [pair.naive.outcome, pair.idempotent.outcome].sort();
     expect(outcomes).toEqual(["did_not_start", "started"]);
     expect(calls.filter((c) => c.url.endsWith("/v1/runs"))).toHaveLength(1);
+  });
+});
+
+describe("cleanupDemoEndpoint", () => {
+  const scene = (run: object, endpoint: Response | object) =>
+    stubFetch((c) => {
+      if (c.method === "DELETE") return new Response(null, { status: 204 });
+      if (c.url.includes("/v1/runs/")) return json({ endpoint_id: "e1", ...run });
+      return endpoint instanceof Response ? endpoint : json(endpoint);
+    });
+  const ours = { description: "murphy run: naive", event_filter: ["__murphy_simulation__"] };
+  const deletes = (calls: Call[]) => calls.filter((c) => c.method === "DELETE");
+
+  it("deletes its own endpoint once the report is stored", async () => {
+    const calls = scene({ report_ready: true }, ours);
+    await expect(cleanupDemoEndpoint(api, "r1")).resolves.toBe("deleted");
+    expect(deletes(calls)[0]?.url).toBe("http://api/v1/endpoints/e1");
+  });
+
+  it("keeps it while the run is still going", async () => {
+    const calls = scene({ report_ready: false }, ours);
+    await expect(cleanupDemoEndpoint(api, "r1")).resolves.toBe("kept");
+    expect(deletes(calls)).toHaveLength(0);
+  });
+
+  it.each([
+    ["another description", { ...ours, description: "my real endpoint" }],
+    ["no description", { ...ours, description: null }],
+    ["ordinary traffic", { ...ours, event_filter: [] }],
+    ["an extra filter", { ...ours, event_filter: ["__murphy_simulation__", "x"] }],
+  ])("never deletes an endpoint it did not create: %s", async (_name, endpoint) => {
+    const calls = scene({ report_ready: true }, endpoint);
+    await expect(cleanupDemoEndpoint(api, "r1")).resolves.toBe("kept");
+    expect(deletes(calls)).toHaveLength(0);
+  });
+
+  it("is safe to call twice", async () => {
+    scene({ report_ready: true }, json({ error: { message: "gone" } }, 404));
+    await expect(cleanupDemoEndpoint(api, "r1")).resolves.toBe("kept");
   });
 });
 
