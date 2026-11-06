@@ -1,0 +1,26 @@
+{
+  "name": "@murphy/demo-target",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Demo app with a naive and an idempotent webhook handler, for simulator runs.",
+  "exports": {
+    ".": "./src/app.ts"
+  },
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@murphy/sdk": "workspace:*",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@murphy/core": "workspace:*",
+    "@murphy/simulator": "workspace:*",
+    "@types/express": "^5.0.3",
+    "fast-check": "^4.3.0",
+    "tsx": "^4.20.0"
+  }
+}
