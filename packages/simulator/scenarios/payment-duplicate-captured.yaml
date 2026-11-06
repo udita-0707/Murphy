@@ -1,0 +1,21 @@
+version: 1
+slug: payment-duplicate-captured
+name: Payment captured webhook arrives twice
+description: >
+  The classic double credit. payment.captured is delivered twice with the same webhook-id, and a handler that
+  credits on every webhook gives the customer the money twice.
+difficulty: beginner
+provider: payments
+seed: 5151
+entities:
+  - { id: order, kind: payment, amount_minor: 49900, currency: INR }
+timeline:
+  - { id: authorized, emit: payment.authorized, entity: order }
+  - id: captured
+    emit: payment.captured
+    entity: order
+    faults: { duplicate: { after_ms: 1500 } }
+assertions:
+  - no_double_credit: { entity: order }
+  - final_state: { entity: order, state: captured, balance_minor: 49900 }
+  - exactly_once_effect: { entity: order }

@@ -1,0 +1,22 @@
+version: 1
+slug: upi-success-after-expiry
+name: UPI success arrives, then a stale expiry
+description: >
+  A collect request expired, then the bank confirmed the debit late. The expiry webhook arrives after the
+  success, and a handler that applies webhooks in arrival order marks a paid order as expired.
+difficulty: advanced
+provider: upi
+seed: 6161
+entities:
+  - { id: collect, kind: upi_collect, amount_minor: 25000, currency: INR }
+timeline:
+  - { id: initiated, emit: upi.collect.initiated, entity: collect }
+  - { id: pending, emit: upi.collect.pending, entity: collect }
+  - { id: expired, emit: upi.collect.expired, entity: collect }
+  - id: success
+    emit: upi.collect.success
+    entity: collect
+    faults: { reorder_before: expired }
+assertions:
+  - final_state: { entity: collect, state: success, balance_minor: 25000 }
+  - ordering_tolerated: { entity: collect }

@@ -1,0 +1,22 @@
+version: 1
+slug: booking-cancel-before-confirm
+name: Cancel event arrives before the confirmation
+description: >
+  The guest confirmed and then cancelled, but the cancellation webhook arrives first. A handler that applies
+  webhooks in arrival order ends up holding a room for a guest who has gone.
+difficulty: intermediate
+provider: booking
+seed: 4243
+entities:
+  - { id: stay, kind: reservation, amount_minor: 320000, currency: INR }
+timeline:
+  - { id: created, emit: reservation.created, entity: stay }
+  - { id: confirmed, emit: reservation.confirmed, entity: stay }
+  - id: cancelled
+    emit: reservation.cancelled
+    entity: stay
+    faults: { reorder_before: confirmed }
+assertions:
+  - final_state: { entity: stay, state: cancelled }
+  - ordering_tolerated: { entity: stay }
+  - no_double_booking: { entity: stay }

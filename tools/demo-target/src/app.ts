@@ -2,6 +2,8 @@ import { murphyTarget, type MurphyTargetOptions } from "@murphy/sdk";
 import express, { type Express } from "express";
 import { IdempotentHandler, NaiveHandler, type DemoHandler } from "./handlers.js";
 
+export { IdempotentHandler, NaiveHandler, type DemoHandler } from "./handlers.js";
+
 export const DEMO_HANDLERS = ["naive", "idempotent"] as const;
 export type DemoHandlerName = (typeof DEMO_HANDLERS)[number];
 
@@ -19,6 +21,7 @@ export interface DemoTarget {
   app: Express;
   /** Everything that arrived, recorded by the target itself. */
   arrivals: Arrival[];
+  handlers: Record<string, DemoHandler>;
   addSecret(secret: string): void;
 }
 
@@ -84,5 +87,5 @@ export function createDemoTarget(options: DemoTargetOptions = {}): DemoTarget {
     );
   }
 
-  return { app, arrivals, addSecret: (secret) => void secrets.add(secret) };
+  return { app, arrivals, handlers, addSecret: (secret) => void secrets.add(secret) };
 }

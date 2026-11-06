@@ -1,0 +1,24 @@
+version: 1
+slug: booking-cancel-after-payment
+name: Cancellation after payment, and the refund webhook is redelivered
+description: >
+  The guest paid, then cancelled, and the money goes back. The handler processes the refund but its reply is
+  lost, so the webhook is retried. A handler that refunds on every webhook pays the guest twice.
+difficulty: intermediate
+provider: booking
+seed: 4244
+entities:
+  - { id: stay, kind: reservation, amount_minor: 780000, currency: INR }
+timeline:
+  - { id: created, emit: reservation.created, entity: stay }
+  - { id: confirmed, emit: reservation.confirmed, entity: stay }
+  - { id: paid, emit: payment.captured, entity: stay }
+  - { id: cancelled, emit: reservation.cancelled, entity: stay }
+  - id: refunded
+    emit: refund.processed
+    entity: stay
+    faults: { drop_then_redeliver: { lost: response } }
+assertions:
+  - final_state: { entity: stay, state: refunded, balance_minor: 0 }
+  - no_double_credit: { entity: stay }
+  - exactly_once_effect: { entity: stay }

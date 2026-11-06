@@ -1,0 +1,21 @@
+version: 1
+slug: booking-duplicate-confirmation
+name: Duplicate confirmation webhook causes a double booking
+description: >
+  The platform sends reservation.confirmed twice with the same webhook-id, which at-least-once delivery
+  allows. A handler that books on every webhook takes two rooms for one guest.
+difficulty: beginner
+provider: booking
+seed: 4242
+entities:
+  - { id: stay, kind: reservation, amount_minor: 450000, currency: INR }
+timeline:
+  - { id: created, emit: reservation.created, entity: stay }
+  - id: confirmed
+    emit: reservation.confirmed
+    entity: stay
+    faults: { duplicate: { after_ms: 1500 } }
+assertions:
+  - no_double_booking: { entity: stay }
+  - final_state: { entity: stay, state: confirmed }
+  - exactly_once_effect: { entity: stay }

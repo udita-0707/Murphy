@@ -1,0 +1,22 @@
+version: 1
+slug: payment-delayed-failure-retry
+name: Delayed failure, then a retry after a lost reply
+description: >
+  A failure webhook arrives late, and the handler's reply is lost, so it is retried. A handler that releases the
+  authorisation hold on every failure webhook releases it twice and corrupts the customer's available balance.
+difficulty: intermediate
+provider: payments
+seed: 5153
+entities:
+  - { id: order, kind: payment, amount_minor: 75000, currency: INR }
+timeline:
+  - { id: authorized, emit: payment.authorized, entity: order }
+  - id: failed
+    emit: payment.failed
+    entity: order
+    faults:
+      delay_ms: 2000
+      drop_then_redeliver: { lost: response }
+assertions:
+  - final_state: { entity: order, state: failed, balance_minor: 0 }
+  - exactly_once_effect: { entity: order }

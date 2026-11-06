@@ -5,3 +5,4 @@ export * from "./scenario.js";
 export * from "./compile.js";
 export * from "./report.js";
 export * from "./evaluate.js";
+export * from "./library.js";

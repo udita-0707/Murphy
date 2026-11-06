@@ -1,0 +1,20 @@
+version: 1
+slug: payment-captured-before-authorized
+name: Captured arrives before authorized
+description: >
+  Webhooks have no ordering guarantee. payment.authorized arrives last, and a handler that applies webhooks in
+  arrival order moves a captured payment back to authorized.
+difficulty: intermediate
+provider: payments
+seed: 5152
+entities:
+  - { id: order, kind: payment, amount_minor: 129900, currency: INR }
+timeline:
+  - { id: authorized, emit: payment.authorized, entity: order }
+  - id: captured
+    emit: payment.captured
+    entity: order
+    faults: { reorder_before: authorized }
+assertions:
+  - final_state: { entity: order, state: captured, balance_minor: 129900 }
+  - ordering_tolerated: { entity: order }

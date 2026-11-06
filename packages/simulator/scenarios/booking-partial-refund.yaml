@@ -1,0 +1,24 @@
+version: 1
+slug: booking-partial-refund
+name: Two partial refunds, one of them redelivered
+description: >
+  Two different partial refunds apply to one reservation, and the first is retried after a lost reply. The
+  handler must count the retry once and still count both refunds, so deduplicating on the reservation id fails too.
+difficulty: advanced
+provider: booking
+seed: 4245
+entities:
+  - { id: stay, kind: reservation, amount_minor: 450000, currency: INR }
+timeline:
+  - { id: created, emit: reservation.created, entity: stay }
+  - { id: confirmed, emit: reservation.confirmed, entity: stay }
+  - { id: paid, emit: payment.captured, entity: stay }
+  - id: first_refund
+    emit: refund.processed
+    entity: stay
+    amount_minor: 100000
+    faults: { drop_then_redeliver: { lost: response } }
+  - { id: second_refund, emit: refund.processed, entity: stay, amount_minor: 50000 }
+assertions:
+  - final_state: { entity: stay, state: paid, balance_minor: 300000 }
+  - exactly_once_effect: { entity: stay }
