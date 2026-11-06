@@ -350,7 +350,8 @@ body {
   gap: var(--space-xl);
   min-height: 100vh;
   min-height: 100dvh;
-  padding-block: var(--space-xl);
+  padding-block: var(--space-3xl) var(--space-xl);
+  position: relative;
   text-align: center;
 }
 .login__pitch {
@@ -859,4 +860,10 @@ body {
 .drawer .code {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.login__back {
+  position: absolute;
+  top: var(--space-lg);
+  left: var(--gutter);
 }
