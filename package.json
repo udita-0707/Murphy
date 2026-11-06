@@ -22,6 +22,7 @@
     "demo:reset": "pnpm --filter @murphy/demo-reset start",
     "receiver": "pnpm --filter @murphy/dev-receiver start --",
     "demo:target": "pnpm --filter @murphy/demo-target start",
+    "murphy": "pnpm --filter @murphy/cli start --",
     "chaos": "pnpm --filter @murphy/chaos start --",
     "load": "pnpm --filter @murphy/chaos load --"
   },
