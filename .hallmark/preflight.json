@@ -1,0 +1,12 @@
+{
+  "scanned": "2026-11-07",
+  "findings": {
+    "fonts": "none",
+    "palette": "none",
+    "motion": "none",
+    "spacing": "none",
+    "framework": "Next.js placeholder in apps/dashboard, nothing built"
+  },
+  "preserve": [],
+  "introduce": ["theme", "tokens", "design system", "gates"]
+}
