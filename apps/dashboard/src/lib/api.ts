@@ -1,6 +1,6 @@
 "use client";
 
-import { getApiKey, setApiKey } from "./session";
+import { clearCsrfCookie, getApiKey, getCsrfToken, setApiKey } from "./session";
 
 export class ApiRequestError extends Error {
   constructor(
@@ -17,7 +17,9 @@ export class ApiRequestError extends Error {
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const key = getApiKey();
   const headers = new Headers(init.headers);
+  const csrf = key ? null : getCsrfToken();
   if (key) headers.set("authorization", `Bearer ${key}`);
+  if (csrf) headers.set("x-murphy-csrf", csrf);
   if (init.body) headers.set("content-type", "application/json");
   let res: Response;
   try {
@@ -36,8 +38,9 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     } catch {
       // Not our error format, so show it as it is.
     }
-    // A key that stopped working: back to the sign-in page, once it is not the sign-in itself.
+    // A credential that stopped working: back to the sign-in page.
     if (res.status === 401 && key) setApiKey(null);
+    if (res.status === 401 && csrf) clearCsrfCookie();
     throw new ApiRequestError(message, res.status, code);
   }
   if (res.headers.get("content-type")?.includes("json")) return JSON.parse(text) as T;

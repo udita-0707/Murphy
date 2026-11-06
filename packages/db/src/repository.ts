@@ -58,7 +58,7 @@ const deliverySelect = {
  * The only way application code touches the database.
  *
  * Every function on a tenant-owned table takes `projectId` first and filters on it. The
- * exceptions are creating a project and looking up an API key by prefix, which happen before
+ * exceptions are creating a project and looking up an API key or a session, which happen before
  * a tenant is known.
  */
 export function createRepository(prisma: PrismaClient) {
@@ -68,6 +68,40 @@ export function createRepository(prisma: PrismaClient) {
         return (await prisma.project.create({
           data: { name: input.name, ownerUserId: input.ownerUserId ?? null, plan: input.plan },
         })) satisfies ProjectRecord;
+      },
+
+      /** The project for this owner, created on first login. Safe if a first login races itself. */
+      async findOrCreateByOwner(ownerUserId: string, name: string): Promise<{ id: string }> {
+        const rows = await prisma.$queryRaw<{ id: string }[]>`
+          INSERT INTO projects (name, owner_user_id)
+          VALUES (${name}, ${ownerUserId})
+          ON CONFLICT (owner_user_id) WHERE owner_user_id IS NOT NULL
+          DO UPDATE SET owner_user_id = EXCLUDED.owner_user_id
+          RETURNING id`;
+        return rows[0]!;
+      },
+    },
+
+    sessions: {
+      async create(projectId: string, input: { tokenHash: Buffer; expiresAt: Date }) {
+        await prisma.session.create({
+          data: { projectId, tokenHash: toBytes(input.tokenHash), expiresAt: input.expiresAt },
+        });
+      },
+
+      /** Pre-authentication lookup: only a session that is neither revoked nor expired. */
+      async findActiveByHash(tokenHash: Buffer, now: Date): Promise<{ projectId: string } | null> {
+        return prisma.session.findFirst({
+          where: { tokenHash: toBytes(tokenHash), revokedAt: null, expiresAt: { gt: now } },
+          select: { projectId: true },
+        });
+      },
+
+      async revokeByHash(tokenHash: Buffer, now: Date): Promise<void> {
+        await prisma.session.updateMany({
+          where: { tokenHash: toBytes(tokenHash), revokedAt: null },
+          data: { revokedAt: now },
+        });
       },
     },
 

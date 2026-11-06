@@ -11,10 +11,16 @@ export function signInError(status: number): string {
   return `Sign-in failed with status ${status}.`;
 }
 
-export function LoginForm() {
+export function LoginForm({
+  github = false,
+  error: initialError = null,
+}: {
+  github?: boolean;
+  error?: string | null;
+}) {
   const router = useRouter();
   const [key, setKey] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
   const [busy, setBusy] = useState(false);
 
   const submit = async (event: FormEvent) => {
@@ -73,6 +79,12 @@ export function LoginForm() {
       <button type="submit" className="btn btn--primary" disabled={busy} aria-busy={busy}>
         {busy ? "Checking" : "Sign in"}
       </button>
+      {github && (
+        // A real navigation, because this leaves for GitHub and comes back with cookies.
+        <a className="btn" href="/auth/github/start">
+          Sign in with GitHub
+        </a>
+      )}
     </form>
   );
 }

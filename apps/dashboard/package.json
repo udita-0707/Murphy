@@ -6,6 +6,7 @@
   "description": "Murphy web dashboard (Next.js + Tailwind).",
   "dependencies": {
     "@murphy/client": "workspace:*",
+    "dotenv": "^16.6.1",
     "next": "^15.5.29",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
-import { setApiKey, useApiKey } from "@/lib/session";
+import { signOut, useSignedIn } from "@/lib/session";
 import { Loading } from "./states";
 import { ThemeToggle, type Theme } from "./theme-toggle";
 
@@ -16,13 +16,13 @@ const LINKS = [
 ];
 
 export function AppShell({ theme, children }: { theme: Theme; children: ReactNode }) {
-  const key = useApiKey();
+  const signedIn = useSignedIn();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (key === null) router.replace("/");
-  }, [key, router]);
+    if (signedIn === false) router.replace("/");
+  }, [signedIn, router]);
 
   return (
     <>
@@ -45,14 +45,14 @@ export function AppShell({ theme, children }: { theme: Theme; children: ReactNod
           </nav>
           <div className="topbar__actions">
             <ThemeToggle initial={theme} />
-            <button type="button" className="btn btn--small" onClick={() => setApiKey(null)}>
+            <button type="button" className="btn btn--small" onClick={() => void signOut()}>
               Sign out
             </button>
           </div>
         </div>
       </header>
       <main className="container page">
-        {key ? children : <Loading label="Checking your session" />}
+        {signedIn ? children : <Loading label="Checking your session" />}
       </main>
     </>
   );

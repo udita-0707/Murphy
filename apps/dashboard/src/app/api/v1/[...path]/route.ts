@@ -1,3 +1,4 @@
+import { credentialFor } from "@/lib/auth-server";
 import { apiUrl } from "@/lib/server-config";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +12,12 @@ async function forward(request: Request, path: string[]): Promise<Response> {
   ) {
     return Response.json(errorBody("not_found", "route not found"), { status: 404 });
   }
+  const credential = credentialFor(request);
+  if (credential && "response" in credential) return credential.response;
   const headers = new Headers();
-  for (const name of ["authorization", "content-type", "idempotency-key"]) {
+  // A session cookie becomes a bearer token here, and the cookie itself goes no further.
+  if (credential) headers.set("authorization", `Bearer ${credential.token}`);
+  for (const name of ["content-type", "idempotency-key"]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }

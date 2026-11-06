@@ -7,6 +7,7 @@ import { getRequestId, requestId } from "./middleware/request-id.js";
 import { bulkReplayRouter, deliveriesRouter, dlqRouter } from "./routes/deliveries.js";
 import { endpointsRouter } from "./routes/endpoints.js";
 import { eventsRouter } from "./routes/events.js";
+import { internalRouter } from "./routes/internal.js";
 import { runsRouter } from "./routes/runs.js";
 import { scenariosRouter } from "./routes/scenarios.js";
 
@@ -15,6 +16,8 @@ export interface AppDeps {
   encryptionKey: Buffer;
   /** Endpoint URL rules on create and update (ADR 005). Defaults to hosted. */
   mode?: MurphyMode;
+  /** Turns on the dashboard's login route (ADR 014). */
+  internalSecret?: string;
   /** Called for unexpected (500) errors. Defaults to console.error. */
   logError?: (err: unknown, requestId: string) => void;
 }
@@ -24,6 +27,7 @@ export function createApp({
   repo,
   encryptionKey,
   mode = "hosted",
+  internalSecret,
   logError = defaultLogError,
 }: AppDeps): Express {
   const app = express();
@@ -36,6 +40,8 @@ export function createApp({
   app.get("/healthz", (_req, res) => {
     res.json({ ok: true });
   });
+
+  if (internalSecret) app.use("/internal", internalRouter(repo, internalSecret));
 
   const v1 = express.Router();
   v1.use(authenticate(repo));

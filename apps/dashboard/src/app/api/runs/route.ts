@@ -1,13 +1,14 @@
 import { DEMO_HANDLERS, prepareDemoTarget, startRun, type DemoHandlerName } from "@murphy/client";
-import { badRequest, clientFor, failure, isSeed, isUuid, unauthorized } from "@/lib/server-api";
+import { badRequest, clientFor, failure, isSeed, isUuid } from "@/lib/server-api";
 import { targetOptions } from "@/lib/server-config";
 
 export const dynamic = "force-dynamic";
 
 /** Starts one scenario on one demo handler. */
 export async function POST(request: Request) {
-  const api = clientFor(request);
-  if (!api) return unauthorized();
+  const client = clientFor(request);
+  if ("response" in client) return client.response;
+  const { api } = client;
   const body = (await request.json().catch(() => null)) as {
     scenario_id?: unknown;
     handler?: unknown;

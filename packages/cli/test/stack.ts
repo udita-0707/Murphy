@@ -42,7 +42,7 @@ async function waitFor(url: string, name: string): Promise<void> {
   }
 }
 
-export async function startStack(): Promise<Stack> {
+export async function startStack(extraEnv: Record<string, string> = {}): Promise<Stack> {
   const password = randomBytes(16).toString("hex");
   const container: StartedTestContainer = await new GenericContainer("postgres:16")
     .withEnvironment({ POSTGRES_USER: "sim", POSTGRES_PASSWORD: password, POSTGRES_DB: "sim" })
@@ -66,6 +66,7 @@ export async function startStack(): Promise<Stack> {
     DATABASE_URL: databaseUrl,
     MURPHY_ENCRYPTION_KEY: randomBytes(32).toString("base64"),
     MURPHY_MODE: "local",
+    ...extraEnv,
   };
   const seeded = spawnSync(process.execPath, ["--import", "tsx", "src/seed.ts", "simulator"], {
     cwd: path.join(REPO_ROOT, "apps/api"),

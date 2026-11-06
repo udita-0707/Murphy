@@ -71,6 +71,7 @@ model Project {
   scenarios         Scenario[]
   scenarioRuns      ScenarioRun[]
   simulatedEntities SimulatedEntity[]
+  sessions          Session[]
 
   @@index([ownerUserId])
   @@map("projects")
@@ -89,6 +90,21 @@ model ApiKey {
 
   @@index([projectId])
   @@map("api_keys")
+}
+
+/// A signed-in GitHub user's session (ADR 014). Only the token's hash is stored.
+model Session {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId String    @map("project_id") @db.Uuid
+  tokenHash Bytes     @unique @map("token_hash")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("sessions")
 }
 
 model Endpoint {

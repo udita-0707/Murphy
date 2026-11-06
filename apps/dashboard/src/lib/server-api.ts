@@ -1,10 +1,13 @@
 import { MurphyApiClient, MurphyClientError } from "@murphy/client";
+import { credentialFor } from "./auth-server";
 import { apiUrl } from "./server-config";
 
 /** The caller's own credential, forwarded. These routes have no authority of their own. */
-export function clientFor(request: Request): MurphyApiClient | null {
-  const match = /^Bearer\s+(\S+)$/i.exec(request.headers.get("authorization") ?? "");
-  return match?.[1] ? new MurphyApiClient({ apiUrl: apiUrl(), token: match[1] }) : null;
+export function clientFor(request: Request): { api: MurphyApiClient } | { response: Response } {
+  const credential = credentialFor(request);
+  if (!credential) return { response: unauthorized() };
+  if ("response" in credential) return credential;
+  return { api: new MurphyApiClient({ apiUrl: apiUrl(), token: credential.token }) };
 }
 
 export const unauthorized = () =>

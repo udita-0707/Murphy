@@ -15,6 +15,7 @@ const app = createApp({
   repo,
   encryptionKey: config.encryptionKey,
   mode: config.mode,
+  internalSecret: config.internalSecret,
 });
 
 const server = app.listen(config.port, () => {

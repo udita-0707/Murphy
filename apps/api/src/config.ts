@@ -9,6 +9,8 @@ export interface Config {
   /** hosted (default) validates endpoint URLs strictly on create and update. */
   mode: MurphyMode;
   port: number;
+  /** Lets the dashboard's server turn a verified GitHub login into a session. Unset turns that off. */
+  internalSecret?: string;
 }
 
 /** Loads the repo-root .env (if present) without overriding variables already set. */
@@ -30,5 +32,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     encryptionKey: parseEncryptionKey(env.MURPHY_ENCRYPTION_KEY),
     mode: parseMode(env.MURPHY_MODE),
     port,
+    internalSecret: env.MURPHY_INTERNAL_SECRET || undefined,
   };
 }
