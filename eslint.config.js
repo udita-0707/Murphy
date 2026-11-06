@@ -13,6 +13,7 @@ export default tseslint.config(
       "**/.turbo/**",
       "**/generated/**",
       "**/.next/**",
+      "**/.next-e2e/**",
       ".claude/**",
       "**/next-env.d.ts",
     ],

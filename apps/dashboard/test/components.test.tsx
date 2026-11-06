@@ -146,6 +146,39 @@ describe("CompareBoard", () => {
     expect(figure().textContent).toBe("No comparison: one side did not start.");
   });
 
+  it("a row that goes from due to sent shows the attempt on both sides", () => {
+    const running: SideState = {
+      phase: "running",
+      input: {
+        steps: [{ id: "a", event_type: "first", planned_offsets_ms: [1000], fault_kinds: [] }],
+        deliveries: [],
+      },
+      lostContact: false,
+      seed: 1,
+      startedAt: null,
+    };
+    const { container, rerender } = render(
+      <CompareBoard title="t" naive={running} idempotent={running} />,
+    );
+    expect(container.querySelectorAll(".cell--due")).toHaveLength(2);
+    const sent: SideState = {
+      ...running,
+      input: {
+        ...running.input,
+        deliveries: [
+          {
+            delivery_id: "d",
+            step: "a",
+            attempts: [{ attempt_no: 1, at_ms: 1010, status: 200, error: null }],
+          },
+        ],
+      },
+    };
+    rerender(<CompareBoard title="t" naive={sent} idempotent={sent} />);
+    expect(container.querySelectorAll(".cell--due")).toHaveLength(0);
+    expect(container.querySelectorAll(".cell--sent")).toHaveLength(2);
+  });
+
   it("marks motion on a live board only", () => {
     const { container } = render(
       <CompareBoard

@@ -202,7 +202,7 @@ export function CompareBoard({
             const detail = rowDetail(row);
             return (
               <tr key={row.key}>
-                <td key={row.cells[0].kind}>
+                <td key={`naive-${row.cells[0].kind}`}>
                   <CellView cell={row.cells[0]} />
                 </td>
                 <td className="spine__mid">
@@ -216,7 +216,7 @@ export function CompareBoard({
                     </span>
                   )}
                 </td>
-                <td key={row.cells[1].kind}>
+                <td key={`idempotent-${row.cells[1].kind}`}>
                   <CellView cell={row.cells[1]} />
                 </td>
               </tr>
