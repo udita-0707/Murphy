@@ -3,7 +3,7 @@
 Second direction, chosen by Udita on 2026-11-07 after seeing the first: **cheerful, tactile, with buttons that press like keys.** She found the first one had too many
 boxes and borders, was too big and blocky, and had plain, lifeless colours. Hallmark owns this direction. The Taste skill was dropped for this phase.
 
-**Theme:** Squeeze, dealt 1 of 3 for the playful genre: soft rounded tiles, round heavy Gabarito over Manrope, a whole page of real colour, peach controls. Cream is the
+**Theme:** Squeeze, dealt 1 of 3 for the playful genre: soft rounded tiles, round heavy Gabarito over Manrope, a whole page of real colour, yellow controls. Cream is the
 light backup for a bright room, and uses the same token names.
 
 ## Waivers on record
@@ -18,6 +18,10 @@ light backup for a bright room, and uses the same token names.
 Udita liked the colours but wanted more. The dark theme is now a real night blue, so the same peach, yellow, tomato and mint pop harder.
 
 New elements, all from real data: swimlanes of attempts, effect tokens under the figure, an assertion meter, fault glyphs, difficulty pips, filter trays, a live delivery bar, status lights, big tomato chaos keys, and the word as keycaps with one come loose. The landing page has a real run replayed by pressing a key, and a keyboard of faults.
+
+## Candy fills
+
+Flat fills, by Udita's request: saturated yellow keys in place of peach, mint PASS, tomato FAIL, and lilac fault tags (Engine solid, Target outlined).
 
 ## Verdicts
 

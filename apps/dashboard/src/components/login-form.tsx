@@ -79,6 +79,9 @@ export function LoginForm({
       <button type="submit" className="btn btn--primary" disabled={busy} aria-busy={busy}>
         {busy ? "Checking" : "Sign in"}
       </button>
+      <a className="login__where" href="/#start">
+        Where do I get a key?
+      </a>
       {github && (
         // A real navigation, because this leaves for GitHub and comes back with cookies.
         <a className="btn" href="/auth/github/start">

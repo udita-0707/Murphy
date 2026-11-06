@@ -170,6 +170,30 @@ export function summariseScenario(scenario: Scenario): ScenarioSummary {
   };
 }
 
+export interface ScenarioDetail {
+  seed: number;
+  /** In the order they are really sent, so a reorder shows. */
+  steps: { id: string; event_type: string; entity: string; faults: PlannedFault["kind"][] }[];
+  assertions: { kind: string; entity: string }[];
+}
+
+/** The steps and assertions of a scenario, for showing it without compiling a run. */
+export function describeScenario(scenario: Scenario): ScenarioDetail {
+  return {
+    seed: scenario.seed,
+    steps: sendOrder(scenario.timeline).map((step) => ({
+      id: step.id,
+      event_type: step.emit,
+      entity: step.entity,
+      faults: plannedFaults(step, (ms) => ms).map((fault) => fault.kind),
+    })),
+    assertions: scenario.assertions.map((assertion) => {
+      const [kind, value] = Object.entries(assertion)[0] as [string, { entity: string }];
+      return { kind, entity: value.entity };
+    }),
+  };
+}
+
 /** The order steps are sent in: logical order, with each reordered step moved before its target. */
 function sendOrder(timeline: readonly ScenarioStep[]): ScenarioStep[] {
   const order = [...timeline];

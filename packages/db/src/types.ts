@@ -247,6 +247,15 @@ export interface RunRecord {
   createdAt: Date;
 }
 
+export interface RunListRow {
+  id: string;
+  scenarioId: string;
+  status: ScenarioRunStatus;
+  targetLabel: string | null;
+  finishedAt: Date | null;
+  createdAt: Date;
+}
+
 export interface RunAttempt {
   attemptNo: number;
   startedAt: Date;

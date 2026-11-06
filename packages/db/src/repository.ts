@@ -19,6 +19,7 @@ import {
   type ProjectRecord,
   type ReplayResult,
   type RunDelivery,
+  type RunListRow,
   type RunRecord,
   type SaveScenarioInput,
   type ScenarioRecord,
@@ -568,6 +569,23 @@ export function createRepository(prisma: PrismaClient) {
       },
 
       /** A run's delivery rows and attempts, without request headers (they hold signatures). */
+      /** Newest first, without plans or reports, for showing a project's results at a glance. */
+      async list(projectId: string, limit: number): Promise<RunListRow[]> {
+        return prisma.scenarioRun.findMany({
+          where: { projectId },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: limit,
+          select: {
+            id: true,
+            scenarioId: true,
+            status: true,
+            targetLabel: true,
+            finishedAt: true,
+            createdAt: true,
+          },
+        });
+      },
+
       async deliveries(projectId: string, runId: string): Promise<RunDelivery[]> {
         const rows = await prisma.delivery.findMany({
           where: { projectId, event: { projectId, scenarioRunId: runId } },

@@ -5,6 +5,7 @@ import {
   rowDetail,
   sideFromReport,
   startGapMs,
+  type BoardRow,
   type Cell,
   type SideInput,
 } from "@/lib/board";
@@ -19,13 +20,13 @@ import { EffectTokens, SwimLanes } from "./elements";
 import { FaultChip } from "./fault-chip";
 import { PendingPlate, VerdictPlate } from "./verdict";
 
-function inputOf(side: SideState): SideInput | null {
+export function inputOf(side: SideState): SideInput | null {
   if (side.phase === "done") return sideFromReport(side.report);
   if (side.phase === "running" || side.phase === "gave_up") return side.input;
   return null;
 }
 
-function SidePlate({ side }: { side: SideState }) {
+export function SidePlate({ side }: { side: SideState }) {
   switch (side.phase) {
     case "done":
       return <VerdictPlate status={side.report.run.status} reason={side.report.run.reason} />;
@@ -78,13 +79,76 @@ function CellView({ cell }: { cell: Cell }) {
   }
 }
 
-function Figure({ difference, more }: { difference: Difference; more: number }) {
+/** The rows, side by side. On a phone each row stacks: the event, then naive, then idempotent. */
+export function AttemptsTable({ rows }: { rows: readonly BoardRow[] }) {
+  return (
+    <table className="spine">
+      <colgroup>
+        <col style={{ width: "30%" }} />
+        <col style={{ width: "40%" }} />
+        <col style={{ width: "30%" }} />
+      </colgroup>
+      <thead>
+        <tr>
+          <th scope="col">naive</th>
+          <th scope="col" className="spine__mid">
+            Event, in real attempt order
+          </th>
+          <th scope="col">idempotent</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => {
+          const detail = rowDetail(row);
+          return (
+            <tr key={row.key}>
+              <td key={`naive-${row.cells[0].kind}`} data-label="naive" className="spine__side">
+                <CellView cell={row.cells[0]} />
+              </td>
+              <td className="spine__mid">
+                <span className="spine__event">{row.eventType}</span>
+                {detail && <span className="spine__sub">{detail}</span>}
+                {row.faults.length > 0 && (
+                  <span className="spine__chips">
+                    {row.faults.map((kind) => (
+                      <FaultChip key={kind} kind={kind} />
+                    ))}
+                  </span>
+                )}
+              </td>
+              <td
+                key={`idempotent-${row.cells[1].kind}`}
+                data-label="idempotent"
+                className="spine__side"
+              >
+                <CellView cell={row.cells[1]} />
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function Figure({
+  difference,
+  more,
+  shown,
+}: {
+  difference: Difference;
+  more: number;
+  /** What the two numbers read right now, while they count up. */
+  shown?: readonly [string, string];
+}) {
   const valueClass = difference.numeric ? "figure__value" : "figure__value figure__value--text";
+  const naive = shown?.[0] ?? difference.naive;
+  const idempotent = shown?.[1] ?? difference.idempotent;
   return (
     <div className="figure" data-testid="figure">
-      <div className="figure__side">
-        <div className={valueClass}>{difference.naive}</div>
-        <EffectTokens value={difference.naive} />
+      <div className="figure__side" data-label="naive">
+        <div className={valueClass}>{naive}</div>
+        <EffectTokens value={naive} />
       </div>
       <div className="figure__label">
         <span className="figure__name">{difference.name}</span>
@@ -97,19 +161,25 @@ function Figure({ difference, more }: { difference: Difference; more: number }) 
           </span>
         )}
       </div>
-      <div className="figure__side">
-        <div className={valueClass}>{difference.idempotent}</div>
-        <EffectTokens value={difference.idempotent} />
+      <div className="figure__side" data-label="idempotent">
+        <div className={valueClass}>{idempotent}</div>
+        <EffectTokens value={idempotent} />
       </div>
     </div>
   );
 }
 
-function ComparisonRow({ comparison }: { comparison: Comparison }) {
+export function ComparisonRow({
+  comparison,
+  shown,
+}: {
+  comparison: Comparison;
+  shown?: readonly [string, string];
+}) {
   switch (comparison.kind) {
     case "diverged": {
       const [first, ...rest] = comparison.differences;
-      return <Figure difference={first!} more={rest.length} />;
+      return <Figure difference={first!} more={rest.length} shown={shown} />;
     }
     case "no_comparison":
       return (
@@ -191,48 +261,7 @@ export function CompareBoard({
 
       <SwimLanes rows={rows} labels={["naive", "idempotent"]} />
 
-      <table className="spine">
-        <colgroup>
-          <col style={{ width: "30%" }} />
-          <col style={{ width: "40%" }} />
-          <col style={{ width: "30%" }} />
-        </colgroup>
-        <thead>
-          <tr>
-            <th scope="col">naive</th>
-            <th scope="col" className="spine__mid">
-              Event, in real attempt order
-            </th>
-            <th scope="col">idempotent</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const detail = rowDetail(row);
-            return (
-              <tr key={row.key}>
-                <td key={`naive-${row.cells[0].kind}`}>
-                  <CellView cell={row.cells[0]} />
-                </td>
-                <td className="spine__mid">
-                  <span className="spine__event">{row.eventType}</span>
-                  {detail && <span className="spine__sub">{detail}</span>}
-                  {row.faults.length > 0 && (
-                    <span className="spine__chips">
-                      {row.faults.map((kind) => (
-                        <FaultChip key={kind} kind={kind} />
-                      ))}
-                    </span>
-                  )}
-                </td>
-                <td key={`idempotent-${row.cells[1].kind}`}>
-                  <CellView cell={row.cells[1]} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <AttemptsTable rows={rows} />
 
       {orderDiffers && (
         <p className="board__meta">The two sides did not see these attempts in the same order.</p>

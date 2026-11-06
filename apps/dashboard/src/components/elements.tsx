@@ -1,5 +1,4 @@
-import type { BoardRow, Cell } from "@/lib/board";
-import { faultOrigin } from "@/lib/faults";
+import type { BoardRow } from "@/lib/board";
 import { CheckGlyph, CrossGlyph } from "./glyphs";
 
 /** One small drawn mark per fault kind, so a fault reads at a glance. Always beside its word. */
@@ -99,8 +98,12 @@ export function AssertionMeter({ statuses }: { statuses: readonly string[] }) {
   );
 }
 
-function sentAt(cell: Cell): number | null {
-  return cell.kind === "sent" ? cell.at_ms : null;
+/** A short name for a mark: the part after the last dot, and whether it is a repeat. */
+function shortLabel(row: BoardRow): string {
+  const name = row.eventType.split(".").pop() ?? row.eventType;
+  if (row.copy > 1) return `${name} again`;
+  if (row.attemptNo > 1) return `${name} retry`;
+  return name;
 }
 
 function Lane({
@@ -108,70 +111,131 @@ function Lane({
   rows,
   side,
   span,
+  named,
+  headAt,
+  hideDue,
 }: {
   label?: string;
   rows: readonly BoardRow[];
   side: 0 | 1;
   span: number;
+  named: boolean;
+  headAt: number | null;
+  hideDue: boolean;
 }) {
+  const marks = rows.flatMap((row) => {
+    const cell = row.cells[side];
+    if (cell.kind === "absent" || (hideDue && cell.kind === "due")) return [];
+    return [{ row, cell, at: Math.min(100, (cell.at_ms / span) * 100) }];
+  });
+  marks.sort((x, y) => x.at - y.at);
+  // Close neighbours take turns above and below the line, so their names cannot collide.
+  let tier = 0;
   return (
-    <div className="lane">
+    <div className={named ? "lane lane--named" : "lane"}>
       {label && <span className="lane__label">{label}</span>}
       <div className="lane__track">
-        {rows.map((row) => {
-          const cell = row.cells[side];
-          if (cell.kind === "absent") return null;
-          const faulted = row.faults.some((kind) => faultOrigin(kind));
+        {marks.map(({ row, cell, at }, i) => {
+          tier = i > 0 && at - marks[i - 1]!.at < 18 ? 1 - tier : 0;
           const failed =
             cell.kind === "sent" &&
             !(cell.status !== null && cell.status >= 200 && cell.status < 300);
           const cls = [
             "lane__mark",
             cell.kind === "due" ? "lane__mark--due" : "",
-            faulted ? "lane__mark--fault" : "",
+            row.faults.length > 0 ? "lane__mark--fault" : "",
             failed ? "lane__mark--bad" : "",
           ]
             .filter(Boolean)
             .join(" ");
+          const align = at > 86 ? "end" : at < 8 ? "start" : "mid";
           return (
-            <span
-              key={row.key}
-              className={cls}
-              style={{ left: `${Math.min(100, (cell.at_ms / span) * 100)}%` }}
-            />
+            <span key={row.key} className="lane__point" style={{ left: `${at}%` }}>
+              <span className={cls} />
+              {named && (
+                <span className={`lane__name lane__name--${tier} lane__name--${align}`}>
+                  {shortLabel(row)}
+                </span>
+              )}
+            </span>
           );
         })}
+        {headAt !== null && (
+          <span
+            className="lane__head"
+            style={{ transform: `translateX(${Math.min(100, (headAt / span) * 100)}%)` }}
+          >
+            <span className="lane__ball" />
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
 /**
- * The attempts drawn on a clock. The table below is the record, and says all of this in words, so this is
- * hidden from screen readers. Diamonds carry a fault, hollow marks got no 2xx, faint ones are not sent yet.
+ * The attempts drawn on a clock. Diamonds carry a fault, hollow marks got no 2xx, faint ones are not sent yet.
+ * Next to a table it is hidden from screen readers, since the table says the same. Without one (`named`) its words count.
  */
 export function SwimLanes({
   rows,
   labels,
+  named = false,
+  headAt = null,
+  hideDue = false,
+  fixedSpan,
 }: {
   rows: readonly BoardRow[];
   labels?: readonly [string, string];
+  /** Print each event's name beside its mark. */
+  named?: boolean;
+  /** Where a moving ball is, in ms, while a run plays. */
+  headAt?: number | null;
+  hideDue?: boolean;
+  /** Keeps the scale still while a run plays. */
+  fixedSpan?: number;
 }) {
-  if (rows.length === 0) return null;
   const times = rows.flatMap((row) =>
     row.cells.flatMap((cell) => (cell.kind === "absent" ? [] : [cell.at_ms])),
   );
-  const sent = rows.flatMap((row) => row.cells.flatMap((cell) => sentAt(cell) ?? []));
-  const longest = Math.max(1, ...times, ...sent);
-  const span = longest * 1.04;
+  if (times.length === 0 && fixedSpan === undefined) return null;
+  const span = fixedSpan ?? Math.max(1, ...times) * 1.04;
+  const common = { rows, span, named, headAt, hideDue };
   return (
-    <div className="lanes" aria-hidden="true">
-      <Lane label={labels?.[0]} rows={rows} side={0} span={span} />
-      {labels && <Lane label={labels[1]} rows={rows} side={1} span={span} />}
+    <div className="lanes" aria-hidden={named ? undefined : true}>
+      <Lane {...common} label={labels?.[0]} side={0} />
+      {labels && <Lane {...common} label={labels[1]} side={1} />}
       <div className={labels ? "lanes__axis lanes__axis--labelled" : "lanes__axis"}>
         <span>0 s</span>
         <span>{(span / 1000).toFixed(1)} s</span>
       </div>
     </div>
+  );
+}
+
+/** A scenario's steps at a glance, in the order they are sent. Diamonds carry a fault, and a duplicate is drawn twice. */
+export function MiniTimeline({
+  steps,
+}: {
+  steps: readonly { id: string; event_type: string; faults: readonly string[] }[];
+}) {
+  return (
+    <span className="mini" aria-hidden="true">
+      {steps.flatMap((step) => {
+        const hot = step.faults.length > 0;
+        const one = (
+          <span
+            key={step.id}
+            className={hot ? "mini__mark mini__mark--fault" : "mini__mark"}
+            title={step.event_type}
+          />
+        );
+        if (!step.faults.includes("duplicate")) return [one];
+        return [
+          <span key={`${step.id}-first`} className="mini__mark" title={step.event_type} />,
+          one,
+        ];
+      })}
+    </span>
   );
 }

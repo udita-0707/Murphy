@@ -66,10 +66,10 @@
   --card-key-edge: oklch(78% 0.035 85);
 
   /* Peach: the keys. Sky: what is live. */
-  --color-accent: oklch(83% 0.115 56);
-  --color-accent-edge: oklch(64% 0.15 46);
-  --color-accent-hover: oklch(87% 0.105 60);
-  --color-accent-ink: oklch(28% 0.07 40);
+  --color-accent: oklch(89% 0.18 100);
+  --color-accent-edge: oklch(68% 0.16 85);
+  --color-accent-hover: oklch(93% 0.17 102);
+  --color-accent-ink: oklch(24% 0.06 85);
   --color-live: oklch(93% 0.065 225);
   --color-focus: oklch(91% 0.14 98);
   /* Sunshine: figures. */
@@ -82,6 +82,10 @@
   --color-fail-edge: oklch(48% 0.17 29);
   --color-fail-hover: oklch(76% 0.18 33);
   --color-fail-text: oklch(89% 0.08 30);
+  --color-pass-ink: oklch(22% 0.06 165);
+  --color-lilac: oklch(82% 0.11 300);
+  --color-lilac-ink: oklch(24% 0.09 300);
+  --color-lilac-line: oklch(82% 0.11 300);
   --color-pass: oklch(88% 0.16 165);
   --color-errored-text: oklch(86% 0.16 88);
 
@@ -99,6 +103,7 @@
   --cap-face: var(--color-card);
   --cap-ink: var(--color-card-ink);
   --cap-edge: var(--card-key-edge);
+  --color-backdrop: oklch(10% 0.05 262 / 0.6);
   --lane-label: 6rem;
   --radius-card: 20px;
   --radius-control: 14px;
@@ -134,7 +139,8 @@
   --color-fail-edge: oklch(36% 0.15 29);
   --color-fail-hover: oklch(57% 0.2 29);
   --color-fail-text: oklch(47% 0.18 29);
-  --color-pass: oklch(42% 0.12 165);
+  --color-lilac-line: oklch(46% 0.15 300);
+  --color-pass: oklch(82% 0.16 165);
   --color-errored-text: oklch(26% 0.09 255);
   --color-key: oklch(98.5% 0.008 85);
   --color-key-hover: oklch(99.5% 0.012 85);

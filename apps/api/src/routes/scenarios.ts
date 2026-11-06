@@ -1,9 +1,11 @@
 import type { Repository, ScenarioRecord } from "@murphy/db";
 import {
+  describeScenario,
   parseScenario,
   ScenarioError,
   summariseScenario,
   type Scenario,
+  type ScenarioDetail,
   type ScenarioSummary,
 } from "@murphy/simulator";
 import { Router } from "express";
@@ -23,6 +25,14 @@ function summaryOf(yaml: string): ScenarioSummary | null {
   }
 }
 
+function detailOf(yaml: string): ScenarioDetail | null {
+  try {
+    return describeScenario(parseScenario(yaml));
+  } catch {
+    return null;
+  }
+}
+
 function serializeScenario(scenario: ScenarioRecord) {
   return {
     id: scenario.id,
@@ -32,6 +42,7 @@ function serializeScenario(scenario: ScenarioRecord) {
     builtin: scenario.projectId === null,
     definition_yaml: scenario.definitionYaml,
     summary: summaryOf(scenario.definitionYaml),
+    detail: detailOf(scenario.definitionYaml),
     created_at: scenario.createdAt.toISOString(),
   };
 }

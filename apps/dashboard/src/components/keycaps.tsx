@@ -1,5 +1,5 @@
 /**
- * The word, as keys. One of them has come loose, because of course it has. Purely decorative: the real name is always
+ * The word, as keys. One of them has come loose, and tips right over if you touch it, because of course it does. Purely decorative: the real name is always
  * in the text beside it, and these are not controls, so they are hidden from assistive tech and from the keyboard.
  */
 export function KeycapWord({ size = "md" }: { size?: "sm" | "md" | "lg" }) {

@@ -5,7 +5,7 @@
  *   pnpm --filter @murphy/dashboard exec tsx scripts/make-fixtures.ts
  */
 import { MurphyApiClient, prepareDemoTarget, startPair, startRun } from "@murphy/client";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { startStack } from "../../../packages/cli/test/stack.js";
 
 const OUT = new URL("../test/fixtures/", import.meta.url);
@@ -57,6 +57,30 @@ try {
     write(`${prefix}-naive`, await finish(naiveId));
     write(`${prefix}-idempotent`, await finish(started.idempotent.runId));
   };
+
+  // `--landing` adds only the runs the landing page's extra fault keys need, and leaves the others alone.
+  if (process.argv.includes("--landing")) {
+    await pair("booking-cancel-after-payment", "lost");
+    // No library scenario forces a reply, so this one is uploaded for the recording only.
+    const yaml = readFileSync(
+      new URL(
+        "../../../packages/simulator/scenarios/booking-cancel-after-payment.yaml",
+        import.meta.url,
+      ),
+      "utf8",
+    )
+      .replace("slug: booking-cancel-after-payment", "slug: forced-reply-on-refund")
+      .replace(/^name: .*$/m, "name: The target refuses a refund webhook once")
+      .replace("{ drop_then_redeliver: { lost: response } }", "{ respond_with: [500] }");
+    const saved = await api.request<{ id: string; slug: string }>("POST", "/v1/scenarios", {
+      definition_yaml: yaml,
+    });
+    data.push(saved);
+    await pair(saved.slug, "forced");
+    console.log("landing fixtures written");
+    await stack.stop();
+    process.exit(0);
+  }
 
   await pair("booking-duplicate-confirmation", "duplicate");
   await pair("booking-cancel-before-confirm", "reorder");

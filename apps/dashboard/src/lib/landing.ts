@@ -3,9 +3,9 @@ import type { SideState } from "./compare";
 import type { RunReport } from "./types";
 
 /** A finished report as it looked `atMs` into the run, so a real run can be replayed. */
-export function sideAt(report: RunReport, atMs: number): SideState {
+export function sideAt(report: RunReport, atMs: number, finishedAfter?: number): SideState {
   const whole = sideFromReport(report);
-  const latest = Math.max(...report.timeline.map((t) => t.at_ms));
+  const latest = finishedAfter ?? Math.max(...report.timeline.map((t) => t.at_ms));
   if (atMs > latest) return { phase: "done", report };
   const input: SideInput = {
     steps: whole.steps,
@@ -109,3 +109,15 @@ export const SCENARIOS = [
   { name: "Delayed failure, then a retry after a lost reply", provider: "Razorpay-style" },
   { name: "UPI success arrives, then a stale expiry", provider: "UPI-style" },
 ];
+
+/** The longest attempt time in a report. */
+export function lastAttemptAt(report: RunReport): number {
+  return Math.max(...report.timeline.map((t) => t.at_ms));
+}
+
+/** A count on its way to its value, one at a time. Words go straight there. */
+export function tickToward(value: string, ticks: number): string {
+  const target = Number(value);
+  if (!Number.isInteger(target)) return value;
+  return String(target < 0 ? Math.max(-ticks, target) : Math.min(ticks, target));
+}

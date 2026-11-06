@@ -29,6 +29,10 @@ The first direction (Wayfind, a departure board in mono type) did not work for y
 
 A landing page followed at `/`, and sign-in moved to `/login`. You asked to focus on the frontend and not spend time passing tests, so **the full suite and the browser end-to-end test have not been run since that change**. Run them before the 11 Nov freeze.
 
+The landing hero is now live, with five fault keys over real recordings, and Scenarios is a card grid with filters, a detail drawer and a survival grid. This added two read-only API pieces: `GET /v1/runs` and a `detail` field on scenarios. **By your instruction no tests were written for any of this**, and the old Scenarios and sign-in tests were not updated for the new UI.
+
+"Forced reply" on the hero is a real run of a scenario uploaded only for the recording, because no library scenario forces a reply. Both handlers pass it, so the card says so. "Survived" counts the 8 scenarios that exist, not the 15 in the original brief.
+
 ## By item
 
 | Item | What exists                                                                                                                         |

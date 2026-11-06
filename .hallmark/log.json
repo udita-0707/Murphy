@@ -4,6 +4,37 @@
   "shape": "Stat-Led",
   "theme": "squeeze",
   "axes": "mid/geometric-sans/warm",
+  "hero": "Corridor: a live card of real recordings, with fault keys",
+  "nav": "slab",
+  "footer": "mast",
+  "imagery": "the product built, real run data",
+  "photos": [],
+  "entry": "none",
+  "fingerprint": "squeeze-night-candy-live-sim",
+  "sections": [
+   "hero sim",
+   "stats as keys",
+   "fault keyboard",
+   "before and after",
+   "fix it",
+   "verdicts",
+   "library",
+   "start",
+   "mast"
+  ],
+  "signature": "fault keys over a live card: dots run, the stamp slams, the counts tick",
+  "waived": [
+   "39b tall keys"
+  ],
+  "prompt": "Candy fills, live hero sim, Scenarios card grid and drawer",
+  "date": "2026-11-06",
+  "mode": "build"
+ },
+ {
+  "scope": "page",
+  "shape": "Stat-Led",
+  "theme": "squeeze",
+  "axes": "mid/geometric-sans/warm",
   "hero": "Corridor: the product replayed beside the headline",
   "nav": "slab",
   "footer": "mast",

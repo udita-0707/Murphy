@@ -41,14 +41,13 @@
 
 .verdict--failed .verdict__plate {
   background: var(--color-fail);
-  box-shadow: 0 5px 0 var(--color-fail-edge);
-  transform: rotate(-1.2deg);
+  transform: rotate(-1.5deg);
   color: var(--color-fail-ink);
 }
 .verdict--passed .verdict__plate {
-  transform: rotate(0.8deg);
-  box-shadow: inset 0 0 0 var(--rule-verdict) var(--color-pass);
-  color: var(--color-pass);
+  border-radius: var(--radius-pill);
+  background: var(--color-pass);
+  color: var(--color-pass-ink);
 }
 .verdict--errored .verdict__plate {
   position: relative;
@@ -101,8 +100,8 @@
   color: var(--color-fail-ink);
 }
 .badge--passed {
-  box-shadow: inset 0 0 0 var(--rule-bar) var(--color-pass);
-  color: var(--color-pass);
+  background: var(--color-pass);
+  color: var(--color-pass-ink);
 }
 .badge--errored {
   outline: var(--rule-bar) dashed var(--color-amber);
@@ -131,11 +130,11 @@
   line-height: 1.3;
 }
 .chip--engine {
-  background: var(--color-ink);
-  color: var(--color-paper);
+  background: var(--color-lilac);
+  color: var(--color-lilac-ink);
 }
 .chip--target {
-  box-shadow: inset 0 0 0 var(--rule-bar) var(--color-ink);
+  box-shadow: inset 0 0 0 var(--rule-bar) var(--color-lilac-line);
   color: var(--color-ink);
 }
 
@@ -302,14 +301,77 @@
   border-radius: var(--radius-pill);
   background: var(--color-rule);
 }
-.lane__mark {
+.lane__point {
   position: absolute;
   top: 50%;
+}
+.lane__mark {
+  display: block;
   width: 16px;
   height: 16px;
   margin: calc(var(--space-xs) * -1) 0 0 calc(var(--space-xs) * -1);
   border-radius: 50%;
   background: var(--color-ink);
+}
+[data-live="true"] .lane__point {
+  animation: dot-land var(--dur-short) var(--ease-out) 1;
+}
+@keyframes dot-land {
+  from {
+    opacity: 0;
+    scale: 0.4;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+.lane--named .lane__track {
+  height: 66px;
+}
+.lane__name {
+  position: absolute;
+  bottom: 14px;
+  left: 0;
+  font-size: var(--text-label);
+  font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+.lane__name--1 {
+  top: 14px;
+  bottom: auto;
+}
+.lane__name--start {
+  transform: translateX(-8px);
+}
+.lane__name--end {
+  transform: translateX(calc(-100% + 8px));
+}
+.lane__head {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: transform 60ms linear;
+}
+.lane__ball {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  margin: calc(var(--space-2xs) * -1.5) 0 0 calc(var(--space-2xs) * -1.5);
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-live="true"] .lane__point {
+    animation: none;
+  }
+  .lane__head {
+    transition: none;
+  }
 }
 .lane__mark--due {
   opacity: 0.35;
@@ -455,15 +517,19 @@
   color: var(--color-fail-ink);
 }
 .meter__cell--pass {
-  box-shadow: inset 0 0 0 var(--rule-bar) var(--color-pass);
-  color: var(--color-pass);
+  border-radius: 50%;
+  background: var(--color-pass);
+  color: var(--color-pass-ink);
 }
 .meter__cell--not_evaluated {
   outline: var(--rule-bar) dashed var(--color-amber);
   outline-offset: calc(var(--rule-bar) * -1);
 }
 
-/* The single run report. */
+/* The single run report. Its verdict is the largest thing on the page. */
+.report > .verdict {
+  --text-verdict: clamp(3.5rem, 10vw, 8rem);
+}
 .report {
   display: grid;
   gap: var(--space-xl);
@@ -763,5 +829,73 @@ h2.card__head {
   }
   .verdict__plate {
     padding: var(--space-xs) var(--space-md);
+  }
+}
+
+/* On a phone, naive stacks above idempotent, everywhere. */
+@media (max-width: 40rem) {
+  .spine,
+  .spine tbody,
+  .spine tr,
+  .spine td {
+    display: block;
+    width: 100%;
+  }
+  .spine thead,
+  .spine colgroup {
+    display: none;
+  }
+  .spine tr {
+    display: flex;
+    flex-direction: column;
+  }
+  .spine tr + tr {
+    border-top: var(--rule-bar) solid var(--color-rule);
+  }
+  .spine td {
+    border-top: 0;
+    padding: var(--space-xs) var(--space-md);
+  }
+  .spine__mid {
+    order: -1;
+    background: var(--color-paper-2);
+  }
+  .spine__event,
+  .spine__sub {
+    text-align: left;
+  }
+  .spine__chips {
+    justify-content: start;
+  }
+  .spine__side::before {
+    content: attr(data-label);
+    display: block;
+    font-size: var(--text-label);
+    font-weight: 700;
+    color: var(--color-muted);
+  }
+  .figure {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .figure__label {
+    grid-column: 1;
+    grid-row: auto;
+    order: -1;
+  }
+  .figure__side::before {
+    content: attr(data-label);
+    font-size: var(--text-label);
+    font-weight: 700;
+    color: var(--color-muted);
+  }
+  .lane {
+    flex-wrap: wrap;
+    gap: var(--space-2xs);
+  }
+  .lane__label {
+    flex-basis: 100%;
+  }
+  .lanes__axis--labelled {
+    margin-left: 0;
   }
 }

@@ -1,0 +1,294 @@
+{
+  "run": {
+    "id": "38a1a1ef-89da-4628-b557-a31b05187e49",
+    "seed": 4244,
+    "reason": "2 of 3 assertions failed. Balance is -780000, expected 0.",
+    "status": "failed",
+    "started_at": "2026-11-06T22:29:45.960Z",
+    "duration_ms": 13861,
+    "finished_at": "2026-11-06T22:29:59.821Z"
+  },
+  "steps": [
+    {
+      "id": "created",
+      "index": 0,
+      "entity": "stay",
+      "event_id": "7b10f529-ac19-4368-b8d7-e3579ffdf506",
+      "deliveries": [
+        {
+          "status": "succeeded",
+          "attempts": [
+            {
+              "at_ms": 1411,
+              "error": null,
+              "status": 200,
+              "attempt_no": 1,
+              "started_at": "2026-11-06T22:29:47.371Z",
+              "duration_ms": 20
+            }
+          ],
+          "delivery_id": "a61ffb8a-2e7a-42ca-86b1-edf4785e2ee6"
+        }
+      ],
+      "event_type": "reservation.created",
+      "webhook_id": "msg_7b10f529-ac19-4368-b8d7-e3579ffdf506",
+      "fault_kinds": [],
+      "planned_offsets_ms": [1000],
+      "provider_entity_id": "res_KjlbfYrcNhJli4"
+    },
+    {
+      "id": "confirmed",
+      "index": 1,
+      "entity": "stay",
+      "event_id": "b28e9404-cadb-44dc-bb10-426d4277a0b9",
+      "deliveries": [
+        {
+          "status": "succeeded",
+          "attempts": [
+            {
+              "at_ms": 2955,
+              "error": null,
+              "status": 200,
+              "attempt_no": 1,
+              "started_at": "2026-11-06T22:29:48.915Z",
+              "duration_ms": 5
+            }
+          ],
+          "delivery_id": "7958dccb-ffba-4b92-a278-01cb12b279f5"
+        }
+      ],
+      "event_type": "reservation.confirmed",
+      "webhook_id": "msg_b28e9404-cadb-44dc-bb10-426d4277a0b9",
+      "fault_kinds": [],
+      "planned_offsets_ms": [2500],
+      "provider_entity_id": "res_KjlbfYrcNhJli4"
+    },
+    {
+      "id": "paid",
+      "index": 2,
+      "entity": "stay",
+      "event_id": "91857969-b5ea-4279-8edb-7aa962164a86",
+      "deliveries": [
+        {
+          "status": "succeeded",
+          "attempts": [
+            {
+              "at_ms": 4492,
+              "error": null,
+              "status": 200,
+              "attempt_no": 1,
+              "started_at": "2026-11-06T22:29:50.452Z",
+              "duration_ms": 7
+            }
+          ],
+          "delivery_id": "29dd60f3-3a08-4d76-adde-aa4121b7a16e"
+        }
+      ],
+      "event_type": "payment.captured",
+      "webhook_id": "msg_91857969-b5ea-4279-8edb-7aa962164a86",
+      "fault_kinds": [],
+      "planned_offsets_ms": [4000],
+      "provider_entity_id": "res_KjlbfYrcNhJli4"
+    },
+    {
+      "id": "cancelled",
+      "index": 3,
+      "entity": "stay",
+      "event_id": "6cf6bf3e-060b-4b68-a821-cab34181469e",
+      "deliveries": [
+        {
+          "status": "succeeded",
+          "attempts": [
+            {
+              "at_ms": 5514,
+              "error": null,
+              "status": 200,
+              "attempt_no": 1,
+              "started_at": "2026-11-06T22:29:51.474Z",
+              "duration_ms": 3
+            }
+          ],
+          "delivery_id": "b7fdd9f0-cddc-465d-b938-ea53bfca412a"
+        }
+      ],
+      "event_type": "reservation.cancelled",
+      "webhook_id": "msg_6cf6bf3e-060b-4b68-a821-cab34181469e",
+      "fault_kinds": [],
+      "planned_offsets_ms": [5500],
+      "provider_entity_id": "res_KjlbfYrcNhJli4"
+    },
+    {
+      "id": "refunded",
+      "index": 4,
+      "entity": "stay",
+      "event_id": "dd5e808d-a660-4080-85c8-d6c99899c630",
+      "deliveries": [
+        {
+          "status": "succeeded",
+          "attempts": [
+            {
+              "at_ms": 7034,
+              "error": null,
+              "status": 503,
+              "attempt_no": 1,
+              "started_at": "2026-11-06T22:29:52.994Z",
+              "duration_ms": 5
+            },
+            {
+              "at_ms": 13146,
+              "error": null,
+              "status": 200,
+              "attempt_no": 2,
+              "started_at": "2026-11-06T22:29:59.106Z",
+              "duration_ms": 2
+            }
+          ],
+          "delivery_id": "bf7df172-11cd-45ad-b72d-887814fb1dde"
+        }
+      ],
+      "event_type": "refund.processed",
+      "webhook_id": "msg_dd5e808d-a660-4080-85c8-d6c99899c630",
+      "fault_kinds": ["drop_then_redeliver"],
+      "planned_offsets_ms": [7000],
+      "provider_entity_id": "res_KjlbfYrcNhJli4"
+    }
+  ],
+  "faults": [
+    {
+      "kind": "drop_then_redeliver",
+      "step": "refunded",
+      "detail": "First attempt reaches the handler, but its reply is lost, so Murphy retries",
+      "evidence": "Attempts answered: 503, 200",
+      "realised": true,
+      "realised_by": "target"
+    }
+  ],
+  "limits": [
+    "Payloads resemble the named provider's shape. They are not exact copies, so a handler can pass here and still meet a field it does not expect in production.",
+    "The target's final state is what the target itself reported. Murphy cannot see inside it, so a wrong state endpoint gives a wrong result.",
+    "A pass means this handler survived these faults, in this run. It does not prove the handler is correct for others, or under concurrent delivery on several servers."
+  ],
+  "target": {
+    "handler": "naive",
+    "endpoint_id": "b8fe4702-9459-4a30-a6fd-de002f0e7c2b"
+  },
+  "summary": {
+    "attempts": 6,
+    "deliveries": 5,
+    "faults_planned": 1,
+    "faults_realised": 1,
+    "assertions_failed": 2,
+    "assertions_passed": 1
+  },
+  "entities": [
+    {
+      "id": "stay",
+      "kind": "reservation",
+      "actual": {
+        "state": "refunded",
+        "effects": {
+          "hold": 0,
+          "credit": 1,
+          "refund": 2,
+          "booking": 0
+        },
+        "balance_minor": -780000
+      },
+      "expected": {
+        "state": "refunded",
+        "effects": {
+          "hold": 0,
+          "credit": 1,
+          "refund": 1,
+          "booking": 0
+        },
+        "balance_minor": 0
+      },
+      "provider_id": "res_KjlbfYrcNhJli4"
+    }
+  ],
+  "scenario": {
+    "name": "Cancellation after payment, and the refund webhook is redelivered",
+    "slug": "booking-cancel-after-payment",
+    "provider": "booking",
+    "difficulty": "intermediate",
+    "provider_label": "Booking platform style"
+  },
+  "timeline": [
+    {
+      "step": "created",
+      "at_ms": 1411,
+      "error": null,
+      "status": 200,
+      "attempt_no": 1,
+      "event_type": "reservation.created",
+      "delivery_id": "a61ffb8a-2e7a-42ca-86b1-edf4785e2ee6"
+    },
+    {
+      "step": "confirmed",
+      "at_ms": 2955,
+      "error": null,
+      "status": 200,
+      "attempt_no": 1,
+      "event_type": "reservation.confirmed",
+      "delivery_id": "7958dccb-ffba-4b92-a278-01cb12b279f5"
+    },
+    {
+      "step": "paid",
+      "at_ms": 4492,
+      "error": null,
+      "status": 200,
+      "attempt_no": 1,
+      "event_type": "payment.captured",
+      "delivery_id": "29dd60f3-3a08-4d76-adde-aa4121b7a16e"
+    },
+    {
+      "step": "cancelled",
+      "at_ms": 5514,
+      "error": null,
+      "status": 200,
+      "attempt_no": 1,
+      "event_type": "reservation.cancelled",
+      "delivery_id": "b7fdd9f0-cddc-465d-b938-ea53bfca412a"
+    },
+    {
+      "step": "refunded",
+      "at_ms": 7034,
+      "error": null,
+      "status": 503,
+      "attempt_no": 1,
+      "event_type": "refund.processed",
+      "delivery_id": "bf7df172-11cd-45ad-b72d-887814fb1dde"
+    },
+    {
+      "step": "refunded",
+      "at_ms": 13146,
+      "error": null,
+      "status": 200,
+      "attempt_no": 2,
+      "event_type": "refund.processed",
+      "delivery_id": "bf7df172-11cd-45ad-b72d-887814fb1dde"
+    }
+  ],
+  "assertions": [
+    {
+      "kind": "final_state",
+      "entity": "stay",
+      "reason": "Balance is -780000, expected 0",
+      "status": "fail"
+    },
+    {
+      "kind": "no_double_credit",
+      "entity": "stay",
+      "reason": "Credited 1 time(s)",
+      "status": "pass"
+    },
+    {
+      "kind": "exactly_once_effect",
+      "entity": "stay",
+      "reason": "Balance is -780000, expected 0; refund effect is 2, expected 1",
+      "status": "fail"
+    }
+  ],
+  "schema_version": 1
+}

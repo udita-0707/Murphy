@@ -27,6 +27,10 @@ const createRunBody = z.strictObject({
   seed: z.number().int().min(0).max(2_147_483_647).optional(),
 });
 
+const listRunsQuery = z.strictObject({
+  limit: z.coerce.number().int().min(1).max(200).default(100),
+});
+
 function serializeDelivery(row: RunDelivery, startedAt: Date | null) {
   return {
     delivery_id: row.deliveryId,
@@ -117,6 +121,22 @@ export function runsRouter(repo: Repository, mode: MurphyMode): Router {
           steps: plan.steps.length,
         });
     }
+  });
+
+  /** Recent runs, newest first, with no plans or reports. */
+  router.get("/", async (req, res) => {
+    const { limit } = parse(listRunsQuery, req.query);
+    const runs = await repo.runs.list(projectIdOf(res), limit);
+    res.json({
+      data: runs.map((run) => ({
+        id: run.id,
+        scenario_id: run.scenarioId,
+        status: run.status,
+        target_label: run.targetLabel,
+        finished_at: run.finishedAt?.toISOString() ?? null,
+        created_at: run.createdAt.toISOString(),
+      })),
+    });
   });
 
   router.get("/:id", async (req, res) => {
