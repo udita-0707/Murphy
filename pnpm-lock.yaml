@@ -120,6 +120,15 @@ importers:
       '@murphy/db':
         specifier: workspace:*
         version: link:../db
+      '@murphy/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@types/express':
+        specifier: ^5.0.3
+        version: 5.0.6
+      express:
+        specifier: ^5.1.0
+        version: 5.3.0
       testcontainers:
         specifier: ^11.7.0
         version: 11.14.0

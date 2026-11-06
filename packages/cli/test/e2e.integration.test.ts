@@ -1,5 +1,9 @@
 import { generateSigningSecret, signHeaders } from "@murphy/core";
+import { murphyTarget, type EntityState } from "@murphy/sdk";
+import express from "express";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import type { Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -134,6 +138,116 @@ describe("murphy run, end to end", () => {
     expect(code).toBe(3);
     expect(output).toMatch(/401/);
     expect(output).not.toMatch(/mk_wrong/);
+  });
+
+  describe("your own handler, as the README shows it", () => {
+    /** A small handler of the reader's own, mounted with murphyTarget(). */
+    async function ownHandler(dedupe: boolean) {
+      const created = await fetch(`${stack.apiUrl}/v1/endpoints`, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${stack.apiKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          url: "http://127.0.0.1:1/replaced-below",
+          event_filter: ["__murphy_simulation__"],
+        }),
+      });
+      const endpoint = (await created.json()) as { id: string; secret: string };
+
+      const seen = new Set<string>();
+      const entities: Record<string, EntityState> = {};
+      const app = express();
+      app.use(
+        "/webhooks/murphy",
+        murphyTarget({
+          secret: endpoint.secret,
+          onEvent(event) {
+            if (dedupe && seen.has(event.webhookId)) return;
+            seen.add(event.webhookId);
+            const id = event.murphy!.entity_id;
+            const booking = entities[id]?.effects.booking ?? 0;
+            entities[id] = {
+              state: event.type.replace("reservation.", ""),
+              effects: { booking: event.type === "reservation.confirmed" ? booking + 1 : booking },
+              balance_minor: 0,
+            };
+          },
+          state: () => ({ entities }),
+        }),
+      );
+      const server = await new Promise<Server>((resolve) => {
+        const s = app.listen(0, "127.0.0.1", () => resolve(s));
+      });
+      const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/webhooks/murphy`;
+      const patched = await fetch(`${stack.apiUrl}/v1/endpoints/${endpoint.id}`, {
+        method: "PATCH",
+        headers: {
+          authorization: `Bearer ${stack.apiKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ url: base }),
+      });
+      expect(patched.status).toBe(200);
+      return { id: endpoint.id, base, server };
+    }
+
+    const run = (own: { id: string; base: string }) =>
+      runCli(stack, [
+        "run",
+        scenario("booking-duplicate-confirmation"),
+        "--endpoint",
+        own.id,
+        "--state-url",
+        `${own.base}/state`,
+        "--label",
+        "my-app",
+      ]);
+
+    it("a handler that dedupes passes, and its endpoint is left alone", async () => {
+      const own = await ownHandler(true);
+      try {
+        const { code, output } = await run(own);
+        expect(code, output).toBe(0);
+        expect(output).toMatch(/against my-app/);
+        const row = await stack.prisma.endpoint.findUniqueOrThrow({ where: { id: own.id } });
+        expect(row.deletedAt).toBeNull();
+      } finally {
+        await new Promise((resolve) => own.server.close(resolve));
+      }
+    });
+
+    it("a handler that does not dedupe fails", async () => {
+      const own = await ownHandler(false);
+      try {
+        const { code, output } = await run(own);
+        expect(code, output).toBe(1);
+        expect(output).toMatch(/Holds 2 bookings, expected 1/);
+      } finally {
+        await new Promise((resolve) => own.server.close(resolve));
+      }
+    });
+
+    it("a response fault works through murphyTarget(), on a handler it does not know", async () => {
+      const own = await ownHandler(true);
+      try {
+        const { code, output } = await runCli(stack, [
+          "run",
+          scenario("booking-cancel-after-payment"),
+          "--endpoint",
+          own.id,
+          "--state-url",
+          `${own.base}/state`,
+        ]);
+        // This small handler does not track refunds, so it should fail on the result...
+        expect(code, output).toBe(1);
+        // ...but the fault itself must have happened through the helper, not been skipped.
+        expect(output).toMatch(/drop_then_redeliver on refunded: happened \(target cooperated\)/);
+      } finally {
+        await new Promise((resolve) => own.server.close(resolve));
+      }
+    });
   });
 
   it("the demo target itself refuses an unsigned webhook", async () => {
