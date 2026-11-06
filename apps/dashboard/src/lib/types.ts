@@ -7,6 +7,7 @@ export type Verdict = RunReport["run"]["status"];
 /** `GET /v1/runs/:id`. */
 export interface LiveRun {
   id: string;
+  scenario_id: string;
   status: string;
   seed: number;
   target_label: string | null;

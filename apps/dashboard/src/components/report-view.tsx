@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { formatAt, rowDetail, sideFromReport, singleSide, type Cell } from "@/lib/board";
+import { sideFromReport, singleSide } from "@/lib/board";
 import { assertionName } from "@/lib/faults";
 import type { RunReport } from "@/lib/types";
 import { FaultChip } from "./fault-chip";
 import { CheckGlyph, CrossGlyph } from "./glyphs";
+import { TimelineTable } from "./timeline-table";
 import { VerdictPlate } from "./verdict";
 
 function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
@@ -34,16 +35,6 @@ function AssertionBadge({ status }: { status: RunReport["assertions"][number]["s
     );
   }
   return <span className="badge badge--errored">Not evaluated</span>;
-}
-
-function replyOf(cell: Cell): string {
-  if (cell.kind === "sent")
-    return cell.status === null ? (cell.error ?? "no reply") : String(cell.status);
-  return "not sent";
-}
-
-function atOf(cell: Cell): string {
-  return cell.kind === "absent" ? "" : formatAt(cell.at_ms);
 }
 
 type Entity = RunReport["entities"][number];
@@ -186,39 +177,7 @@ export function ReportView({ report, actions }: { report: RunReport; actions?: R
       </Section>
 
       <Section title="Timeline" note="Every attempt, in the order it really started.">
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th scope="col">At</th>
-                <th scope="col">Event</th>
-                <th scope="col">Reply</th>
-                <th scope="col">Faults</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.key}>
-                  <td>{atOf(row.cells[0])}</td>
-                  <td>
-                    {row.eventType}
-                    {rowDetail(row) && (
-                      <span className="spine__sub" style={{ textAlign: "left" }}>
-                        {rowDetail(row)}
-                      </span>
-                    )}
-                  </td>
-                  <td>{replyOf(row.cells[0])}</td>
-                  <td>
-                    {row.faults.map((kind) => (
-                      <FaultChip key={kind} kind={kind} />
-                    ))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <TimelineTable rows={rows} />
       </Section>
 
       <Section title="Final state" note="Expected against what the target itself reported.">
