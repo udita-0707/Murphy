@@ -92,8 +92,33 @@ describe("newTimelineLines", () => {
     const lines = newTimelineLines(first, shown);
     expect(lines).toHaveLength(2);
     expect(lines[0]).toMatch(/\+1\.00s\s+reservation\.created\s+200/);
-    expect(lines[1]).toMatch(/\+2\.50s\s+reservation\.confirmed\s+200\s+\[duplicate\]/);
+    expect(lines[1]).toMatch(/\+2\.50s\s+reservation\.confirmed\s+200/);
     expect(newTimelineLines(first, shown)).toEqual([]);
+  });
+
+  it("tags only the later copy as the duplicate, and only the first attempt with other faults", () => {
+    const lines = newTimelineLines(
+      run([
+        { delivery_id: "z", step: "confirmed", attempts: [attempt(1, 3_000, 200)] },
+        { delivery_id: "y", step: "confirmed", attempts: [attempt(1, 2_000, 200)] },
+      ]),
+      new Set(),
+    );
+    expect(lines[0]).not.toMatch(/duplicate/);
+    expect(lines[1]).toMatch(/\[duplicate\]/);
+
+    const dropped = run([
+      {
+        delivery_id: "a",
+        step: "confirmed",
+        attempts: [attempt(1, 1, 503), attempt(2, 2, 200)],
+      },
+    ]);
+    dropped.steps[1]!.fault_kinds = ["drop_then_redeliver"];
+    const retried = newTimelineLines(dropped, new Set());
+    expect(retried[0]).toMatch(/\[drop_then_redeliver\]/);
+    expect(retried[1]).not.toMatch(/drop_then_redeliver/);
+    expect(retried[1]).toMatch(/\(attempt 2\)/);
   });
 
   it("marks retries, and shows an error when there is no status", () => {

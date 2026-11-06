@@ -34,7 +34,7 @@ app.listen(3001);
 Then create an endpoint for it (keep the secret it returns) and run a scenario:
 
 ```sh
-murphy run packages/simulator/scenarios/booking-duplicate-confirmation.yaml \
+pnpm -s murphy run packages/simulator/scenarios/booking-duplicate-confirmation.yaml \
   --endpoint <endpoint id> --state-url http://127.0.0.1:3001/webhooks/murphy/state
 ```
 

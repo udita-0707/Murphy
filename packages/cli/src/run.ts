@@ -123,6 +123,17 @@ export interface ReportSummary {
   faults: { step: string; kind: string; realised_by: string; realised: boolean }[];
 }
 
+/** Which faults to show on one line: a retry or the first copy of a duplicate is not itself the fault. */
+function faultsOnLine(run: LiveRun, kinds: string[], step: string, id: string, attempt: number) {
+  const copies = run.deliveries
+    .filter((d) => d.step === step)
+    .sort((x, y) => (x.attempts[0]?.at_ms ?? Infinity) - (y.attempts[0]?.at_ms ?? Infinity));
+  const isLaterCopy = copies[0]?.delivery_id !== id;
+  return kinds.filter((kind) =>
+    kind === "duplicate" ? isLaterCopy : attempt === 1 && !isLaterCopy,
+  );
+}
+
 /** One timeline line per attempt that has not been shown yet, oldest first. */
 export function newTimelineLines(run: LiveRun, shown: Set<string>): string[] {
   const steps = new Map(run.steps.map((s) => [s.id, s]));
@@ -135,9 +146,16 @@ export function newTimelineLines(run: LiveRun, shown: Set<string>): string[] {
     const step = steps.get(d.step);
     const at = `+${((attempt.at_ms ?? 0) / 1000).toFixed(2)}s`.padStart(8);
     const result = attempt.status === null ? (attempt.error ?? "no response") : attempt.status;
-    const faults = step?.fault_kinds.length ? `  [${step.fault_kinds.join(", ")}]` : "";
+    const kinds = faultsOnLine(
+      run,
+      step?.fault_kinds ?? [],
+      d.step,
+      d.delivery_id,
+      attempt.attempt_no,
+    );
+    const faults = kinds.length ? `  [${kinds.join(", ")}]` : "";
     const retry = attempt.attempt_no > 1 ? ` (attempt ${attempt.attempt_no})` : "";
-    return `${at}  ${(step?.event_type ?? d.step).padEnd(24)} ${String(result).padEnd(5)}${retry}${faults}`;
+    return `${at}  ${(step?.event_type ?? d.step).padEnd(24)} ${String(result).padEnd(5)}${retry}${faults}`.trimEnd();
   });
 }
 
