@@ -13,6 +13,8 @@ export interface Stack {
   apiUrl: string;
   targetUrl: string;
   apiKey: string;
+  databaseUrl: string;
+  encryptionKey: string;
   prisma: PrismaClient;
   stop(): Promise<void>;
 }
@@ -42,7 +44,10 @@ async function waitFor(url: string, name: string): Promise<void> {
   }
 }
 
-export async function startStack(extraEnv: Record<string, string> = {}): Promise<Stack> {
+export async function startStack(
+  extraEnv: Record<string, string> = {},
+  options: { worker?: boolean } = {},
+): Promise<Stack> {
   const password = randomBytes(16).toString("hex");
   const container: StartedTestContainer = await new GenericContainer("postgres:16")
     .withEnvironment({ POSTGRES_USER: "sim", POSTGRES_PASSWORD: password, POSTGRES_DB: "sim" })
@@ -51,8 +56,10 @@ export async function startStack(extraEnv: Record<string, string> = {}): Promise
       test: ["CMD-SHELL", "pg_isready -h localhost -U sim -d sim"],
       interval: 250,
       timeout: 1000,
-      retries: 240,
+      // A full test run starts many containers at once, so give this one room.
+      retries: 960,
     })
+    .withStartupTimeout(240_000)
     .withWaitStrategy(Wait.forHealthCheck())
     .start();
   const databaseUrl = `postgresql://sim:${password}@127.0.0.1:${container.getMappedPort(5432)}/sim`;
@@ -88,7 +95,7 @@ export async function startStack(extraEnv: Record<string, string> = {}): Promise
     children.push(child);
   };
   start("apps/api", "src/server.ts", { PORT: String(apiPort) });
-  start("apps/worker", "src/main.ts");
+  if (options.worker !== false) start("apps/worker", "src/main.ts");
   start("tools/demo-target", "src/main.ts", { DEMO_TARGET_PORT: String(targetPort) });
 
   const apiUrl = `http://127.0.0.1:${apiPort}`;
@@ -100,6 +107,8 @@ export async function startStack(extraEnv: Record<string, string> = {}): Promise
     apiUrl,
     targetUrl,
     apiKey,
+    databaseUrl,
+    encryptionKey: env.MURPHY_ENCRYPTION_KEY,
     prisma,
     stop: async () => {
       for (const child of children) child.kill("SIGTERM");

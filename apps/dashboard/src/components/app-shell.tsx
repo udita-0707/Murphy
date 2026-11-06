@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/events", label: "Events" },
   { href: "/deliveries", label: "Deliveries" },
   { href: "/dlq", label: "Dead letters" },
+  { href: "/chaos", label: "Chaos" },
 ];
 
 export function AppShell({ theme, children }: { theme: Theme; children: ReactNode }) {

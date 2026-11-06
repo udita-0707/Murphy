@@ -101,3 +101,46 @@ describe("demo target", () => {
     ]);
   });
 });
+
+describe("the chaos routes", () => {
+  const fail = (base: string, seconds: unknown) =>
+    fetch(`${base}/_chaos/fail`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ seconds }),
+    });
+
+  it("do not exist unless asked for", async () => {
+    const base = await start();
+    expect((await fail(base, 5)).status).toBe(404);
+    expect((await fetch(`${base}/_chaos/status`)).status).toBe(404);
+    expect((await fetch(`${base}/_chaos/sink`, { method: "POST" })).status).toBe(404);
+  });
+
+  it("answer 500 to deliveries while failing, keep state readable, and recover by themselves", async () => {
+    const base = await start(createDemoTarget({ chaos: true }));
+    expect((await fail(base, 1)).status).toBe(200);
+    expect((await fetch(`${base}/naive`, { method: "POST" })).status).toBe(500);
+    expect((await fetch(`${base}/_chaos/sink`, { method: "POST" })).status).toBe(500);
+    expect((await fetch(`${base}/naive/state?run_id=x`)).status).toBe(200);
+    expect((await (await fetch(`${base}/_chaos/status`)).json()) as object).toMatchObject({
+      failing: true,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+    expect((await fetch(`${base}/_chaos/sink`, { method: "POST" })).status).toBe(204);
+  });
+
+  it.each([0, -1, 61, 1.5, "5", null])("refuse %s seconds", async (seconds) => {
+    const base = await start(createDemoTarget({ chaos: true }));
+    expect((await fail(base, seconds)).status).toBe(400);
+  });
+
+  it("count distinct webhook ids at the sink", async () => {
+    const base = await start(createDemoTarget({ chaos: true }));
+    for (const id of ["a", "a", "b"]) {
+      await fetch(`${base}/_chaos/sink`, { method: "POST", headers: { "webhook-id": id } });
+    }
+    const status = (await (await fetch(`${base}/_chaos/status`)).json()) as { received: number };
+    expect(status.received).toBe(2);
+  });
+});

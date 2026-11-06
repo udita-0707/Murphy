@@ -10,3 +10,4 @@ docs/BRIEF.md
 .hallmark
 .next-e2e
 apps/dashboard/src/export/generated
+apps/dashboard/tsconfig.json

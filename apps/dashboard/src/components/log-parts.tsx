@@ -8,7 +8,7 @@ import { Empty, ErrorState, Loading } from "./states";
 
 /** Words and shape for every delivery and endpoint status. Verdict colours stay on verdicts. */
 export function StateBadge({ status }: { status: string }) {
-  return <span className={`badge state state--${status}`}>{status.replace("_", " ")}</span>;
+  return <span className={`badge lifecycle lifecycle--${status}`}>{status.replace("_", " ")}</span>;
 }
 
 export function SimulatedTag({ simulated }: { simulated: boolean | undefined }) {

@@ -24,7 +24,8 @@
     "demo:target": "pnpm --filter @murphy/demo-target start",
     "murphy": "pnpm --filter @murphy/cli start --",
     "chaos": "pnpm --filter @murphy/chaos start --",
-    "load": "pnpm --filter @murphy/chaos load --"
+    "load": "pnpm --filter @murphy/chaos load --",
+    "demo:stack": "pnpm --filter @murphy/control stack"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

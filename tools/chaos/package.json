@@ -20,5 +20,8 @@
     "@types/autocannon": "^7.12.7",
     "autocannon": "^8.0.0",
     "tsx": "^4.20.0"
+  },
+  "exports": {
+    "./procs": "./src/procs.ts"
   }
 }

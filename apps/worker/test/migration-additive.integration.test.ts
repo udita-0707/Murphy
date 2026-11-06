@@ -9,6 +9,7 @@ const MIGRATIONS = path.resolve(
   "../../../packages/db/prisma/migrations",
 );
 const SIMULATOR_MIGRATION = "20261106120000_simulator_runs";
+const GITHUB_MIGRATION = "20261107120000_github_sessions";
 
 let container: StartedPostgreSqlContainer;
 
@@ -69,14 +70,6 @@ describe("the simulator migration keeps existing data valid", () => {
     await container?.stop();
   });
 
-  it("is the newest migration, so this test covers what ships", () => {
-    const all = readdirSync(MIGRATIONS, { withFileTypes: true })
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name)
-      .sort();
-    expect(all.at(-1)).toBe(SIMULATOR_MIGRATION);
-  });
-
   it("leaves old rows unchanged, with the new columns empty", async () => {
     expect(await psql(`SELECT type, idempotency_key, scenario_run_id FROM events`)).toBe(
       "payment.captured|key-1|",
@@ -114,5 +107,48 @@ describe("the simulator migration keeps existing data valid", () => {
     await psql(`
       INSERT INTO scenarios (project_id, slug, name, difficulty, definition_yaml)
       SELECT id, 'builtin', 'P', 'beginner', 'x' FROM projects`);
+  });
+
+  /** Runs after the tests above, because it builds on the same rows. */
+  describe("the GitHub login migration, applied on top", () => {
+    beforeAll(async () => {
+      await apply(GITHUB_MIGRATION);
+    });
+
+    it("is the newest migration, so this test covers what ships", () => {
+      const all = readdirSync(MIGRATIONS, { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name)
+        .sort();
+      expect(all.at(-1)).toBe(GITHUB_MIGRATION);
+    });
+
+    it("leaves existing rows as they were", async () => {
+      expect(
+        await psql("SELECT name, owner_user_id IS NULL FROM projects WHERE name = 'before'"),
+      ).toBe("before|t");
+      expect(await psql("SELECT count(*) FROM deliveries")).not.toBe("0");
+    });
+
+    it("still allows many projects with no owner, as API key projects have", async () => {
+      await psql("INSERT INTO projects (name) VALUES ('no-owner-1'), ('no-owner-2')");
+      expect(await psql("SELECT count(*) FROM projects WHERE owner_user_id IS NULL")).not.toBe("0");
+    });
+
+    it("allows one project per GitHub user", async () => {
+      await psql("INSERT INTO projects (name, owner_user_id) VALUES ('a', 'github:1')");
+      await expect(
+        psql("INSERT INTO projects (name, owner_user_id) VALUES ('b', 'github:1')"),
+      ).rejects.toThrow(/projects_owner_user_id_key/);
+    });
+
+    it("removes a project's sessions with it", async () => {
+      await psql(`
+        WITH p AS (INSERT INTO projects (name) VALUES ('with-session') RETURNING id)
+        INSERT INTO sessions (project_id, token_hash, expires_at)
+        SELECT id, '\\x01'::bytea, now() + interval '1 hour' FROM p`);
+      await psql("DELETE FROM projects WHERE name = 'with-session'");
+      expect(await psql("SELECT count(*) FROM sessions")).toBe("0");
+    });
   });
 });

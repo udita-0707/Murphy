@@ -1,0 +1,28 @@
+{
+  "name": "@murphy/control",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-only control service for the chaos panel. Never part of a hosted deployment.",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "stack": "tsx src/stack.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@murphy/chaos": "workspace:*",
+    "@murphy/client": "workspace:*",
+    "@murphy/core": "workspace:*",
+    "dotenv": "^16.6.0",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@murphy/db": "workspace:*",
+    "@types/express": "^5.0.3",
+    "testcontainers": "^11.7.0",
+    "tsx": "^4.20.0",
+    "supertest": "^7.1.0",
+    "@types/supertest": "^6.0.3"
+  }
+}

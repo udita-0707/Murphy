@@ -586,3 +586,7 @@
   flex-wrap: wrap;
   gap: var(--space-2xs);
 }
+
+.section__head {
+  max-width: none;
+}

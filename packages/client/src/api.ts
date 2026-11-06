@@ -24,7 +24,12 @@ export class MurphyApiClient {
     this.apiUrl = options.apiUrl.replace(/\/$/, "");
   }
 
-  async request<T>(method: string, route: string, body?: unknown): Promise<T> {
+  async request<T>(
+    method: string,
+    route: string,
+    body?: unknown,
+    extraHeaders: Record<string, string> = {},
+  ): Promise<T> {
     let res: Response;
     try {
       res = await fetch(`${this.apiUrl}${route}`, {
@@ -32,6 +37,7 @@ export class MurphyApiClient {
         headers: {
           authorization: `Bearer ${this.options.token}`,
           ...(body === undefined ? {} : { "content-type": "application/json" }),
+          ...extraHeaders,
         },
         body: body === undefined ? undefined : JSON.stringify(body),
       });

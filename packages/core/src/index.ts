@@ -4,3 +4,4 @@ export * from "./canonical.js";
 export * from "./encryption.js";
 export * from "./address.js";
 export * from "./murphy-block.js";
+export * from "./local-only.js";

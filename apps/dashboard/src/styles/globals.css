@@ -293,25 +293,105 @@ body {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
-.state--succeeded,
-.state--active {
+.lifecycle--succeeded,
+.lifecycle--active {
   border: var(--rule-bar) solid var(--color-rule);
   color: var(--color-ink);
 }
-.state--pending,
-.state--in_flight {
+.lifecycle--pending,
+.lifecycle--in_flight {
   border: var(--rule-bar) solid var(--color-live);
   color: var(--color-live);
 }
-.state--failed,
-.state--paused,
-.state--disabled,
-.state--cancelled {
+.lifecycle--failed,
+.lifecycle--paused,
+.lifecycle--disabled,
+.lifecycle--cancelled {
   border: var(--rule-bar) dashed var(--color-muted);
   color: var(--color-ink-2);
 }
-.state--dead {
+.lifecycle--dead {
   background: var(--color-ink);
   border: var(--rule-bar) solid var(--color-ink);
   color: var(--color-paper);
+}
+
+/* Chaos panel. */
+.counters {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border: var(--rule-bar) solid var(--color-border);
+}
+.counter {
+  display: grid;
+  gap: var(--space-2xs);
+  padding: var(--space-md);
+  border-right: var(--rule-hair) solid var(--color-rule);
+}
+.counter:last-child {
+  border-right: 0;
+}
+.counter__value {
+  font-size: var(--text-verdict);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-figure);
+  font-variant-numeric: tabular-nums;
+}
+.counter__label {
+  font-size: var(--text-label);
+  font-weight: 500;
+}
+.counter--lost {
+  background: var(--color-paper-2);
+}
+.proof {
+  padding: var(--space-md) var(--space-lg);
+  font-size: var(--text-head);
+  font-weight: 800;
+  line-height: 1.25;
+  border: var(--rule-bar) solid var(--color-rule);
+}
+.proof--good {
+  border: var(--rule-bar) solid var(--color-pass);
+  color: var(--color-pass);
+}
+.proof--bad {
+  background: var(--color-fail);
+  border: var(--rule-bar) solid var(--color-fail);
+  color: var(--color-fail-ink);
+}
+.proof--wait {
+  color: var(--color-live);
+  font-weight: 500;
+}
+.chaos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-md);
+}
+.chaos__fail {
+  display: flex;
+  align-items: end;
+  gap: var(--space-xs);
+}
+.chaos__seconds {
+  width: 12rem;
+}
+.plain-list {
+  display: grid;
+  gap: var(--space-2xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 60rem) {
+  .counters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .counter {
+    border-bottom: var(--rule-hair) solid var(--color-rule);
+  }
 }
