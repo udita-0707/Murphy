@@ -28,6 +28,8 @@ export interface WorkerConfig {
   requestTimeoutMs: number;
   /** How often this worker looks for expired leases. */
   reapIntervalMs: number;
+  /** How often this worker looks for simulator runs to finish. */
+  runFinishIntervalMs: number;
   /** How long graceful shutdown waits for in-flight deliveries before releasing them. */
   shutdownTimeoutMs: number;
   /** Replaces the retry schedule. Local mode only, used by the chaos harness (ADR 010). */
@@ -61,6 +63,7 @@ export function loadWorkerConfig(env: NodeJS.ProcessEnv = process.env): WorkerCo
     requestTimeoutMs: intFromEnv(env, "WORKER_REQUEST_TIMEOUT_MS", 10_000, 100),
     shutdownTimeoutMs: intFromEnv(env, "WORKER_SHUTDOWN_TIMEOUT_MS", 15_000, 0),
     reapIntervalMs: intFromEnv(env, "WORKER_REAP_INTERVAL_MS", 10_000, 100),
+    runFinishIntervalMs: intFromEnv(env, "WORKER_RUN_FINISH_INTERVAL_MS", 1_000, 50),
   };
   assertLeaseOutlastsRequest(config);
   const retryScheduleMs = parseRetrySchedule(env.WORKER_RETRY_SCHEDULE_MS, config.mode);

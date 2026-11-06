@@ -13,6 +13,7 @@
   "dependencies": {
     "@murphy/core": "workspace:*",
     "@murphy/db": "workspace:*",
+    "@murphy/simulator": "workspace:*",
     "dotenv": "^16.6.0",
     "ipaddr.js": "^2.5.0",
     "undici": "^7.30.1"

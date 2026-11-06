@@ -83,6 +83,9 @@ importers:
       '@murphy/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@murphy/simulator':
+        specifier: workspace:*
+        version: link:../../packages/simulator
       dotenv:
         specifier: ^16.6.0
         version: 16.6.1
