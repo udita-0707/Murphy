@@ -8,3 +8,5 @@ coverage
 .DS_Store
 *.log
 .chaos
+.claude/skills/
+.claude/settings.local.json
