@@ -16,6 +16,12 @@ import {
   type ProjectPlan,
   type ProjectRecord,
   type ReplayResult,
+  type RunDelivery,
+  type RunRecord,
+  type SaveScenarioInput,
+  type ScenarioRecord,
+  type StartRunInput,
+  type StartRunResult,
   type UpdateEndpointInput,
 } from "./types.js";
 
@@ -339,6 +345,7 @@ export function createRepository(prisma: PrismaClient) {
             payload: true,
             idempotencyKey: true,
             createdAt: true,
+            scenarioRunId: true,
             deliveries: {
               where: { projectId },
               orderBy: [{ createdAt: "asc" }, { id: "asc" }],
@@ -352,6 +359,163 @@ export function createRepository(prisma: PrismaClient) {
           payload: row.payload as JsonValue,
           deliveries: row.deliveries satisfies DeliveryRecord[],
         };
+      },
+    },
+
+    scenarios: {
+      /** Creates or replaces this project's scenario with that slug. Past runs keep their own plan. */
+      async save(projectId: string, input: SaveScenarioInput): Promise<ScenarioRecord> {
+        return prisma.scenario.upsert({
+          where: { projectId_slug: { projectId, slug: input.slug } },
+          create: { projectId, ...input },
+          update: input,
+        });
+      },
+
+      /** The project's own scenarios and the public built-ins. */
+      async list(projectId: string): Promise<ScenarioRecord[]> {
+        return prisma.scenario.findMany({
+          where: { OR: [{ projectId }, { projectId: null, isPublic: true }] },
+          orderBy: [{ slug: "asc" }, { id: "asc" }],
+        });
+      },
+
+      async get(projectId: string, id: string): Promise<ScenarioRecord | null> {
+        return prisma.scenario.findFirst({
+          where: { id, OR: [{ projectId }, { projectId: null, isPublic: true }] },
+        });
+      },
+
+      /** Installs the built-in library. Not tenant data: built-ins have no project. */
+      async syncBuiltins(inputs: SaveScenarioInput[]): Promise<void> {
+        for (const s of inputs) {
+          await prisma.$executeRaw`
+            INSERT INTO scenarios (slug, name, difficulty, definition_yaml, is_public)
+            VALUES (${s.slug}, ${s.name}, ${s.difficulty}::scenario_difficulty, ${s.definitionYaml}, true)
+            ON CONFLICT (slug) WHERE project_id IS NULL DO UPDATE
+            SET name = EXCLUDED.name, difficulty = EXCLUDED.difficulty,
+                definition_yaml = EXCLUDED.definition_yaml, is_public = true`;
+        }
+      },
+    },
+
+    runs: {
+      /**
+       * Starts a simulator run in one transaction: the run, its entities, and ordinary events and
+       * delivery rows for this one endpoint, due in the future (ADR 011). The real worker does the
+       * rest. It does not fan out, so a project's real endpoints never see simulated events.
+       *
+       * The endpoint is locked FOR SHARE so a delete cannot strand a row (ADR 009). Waits are bounded
+       * by the transaction timeout, which allows for a scenario's largest size.
+       */
+      async start(projectId: string, input: StartRunInput): Promise<StartRunResult> {
+        return prisma.$transaction(
+          async (tx) => {
+            const scenario = await tx.scenario.findFirst({
+              where: {
+                id: input.scenarioId,
+                OR: [{ projectId }, { projectId: null, isPublic: true }],
+              },
+              select: { id: true },
+            });
+            if (!scenario) return { outcome: "scenario_not_found" };
+
+            const endpoint = await tx.$queryRaw<{ id: string }[]>`
+              SELECT id::text FROM endpoints
+              WHERE id = ${input.endpointId}::uuid AND project_id = ${projectId}::uuid
+                AND status = 'active' AND deleted_at IS NULL
+              FOR SHARE`;
+            if (endpoint.length === 0) return { outcome: "endpoint_not_available" };
+
+            await tx.$executeRaw`
+              INSERT INTO scenario_runs (id, project_id, scenario_id, endpoint_id, status, started_at,
+                                         seed, target_label, state_url, deadline_at, plan)
+              VALUES (${input.id}::uuid, ${projectId}::uuid, ${input.scenarioId}::uuid,
+                      ${input.endpointId}::uuid, 'running', now(), ${input.seed}, ${input.targetLabel},
+                      ${input.stateUrl}, now() + make_interval(secs => ${input.deadlineOffsetMs / 1000}),
+                      ${JSON.stringify(input.plan)}::jsonb)`;
+
+            for (const step of input.steps) {
+              const inserted = await tx.$queryRaw<{ id: string }[]>`
+                INSERT INTO events (project_id, type, payload, idempotency_key, request_hash, scenario_run_id)
+                VALUES (${projectId}::uuid, ${step.eventType}, ${JSON.stringify(step.payload)}::jsonb,
+                        ${step.idempotencyKey}, ${step.requestHash}, ${input.id}::uuid)
+                RETURNING id::text AS id`;
+              const eventId = inserted[0]!.id;
+              for (const offset of step.dueOffsetsMs) {
+                await tx.$executeRaw`
+                  INSERT INTO deliveries (project_id, event_id, endpoint_id, status, next_attempt_at)
+                  VALUES (${projectId}::uuid, ${eventId}::uuid, ${input.endpointId}::uuid, 'pending',
+                          now() + make_interval(secs => ${offset / 1000}))`;
+              }
+            }
+
+            await tx.simulatedEntity.createMany({
+              data: input.entities.map((e) => ({ ...e, runId: input.id, projectId })),
+            });
+            return { outcome: "started", runId: input.id };
+          },
+          { timeout: 15_000 },
+        );
+      },
+
+      async get(projectId: string, id: string): Promise<RunRecord | null> {
+        const row = await prisma.scenarioRun.findFirst({
+          where: { id, projectId },
+          select: {
+            id: true,
+            projectId: true,
+            scenarioId: true,
+            endpointId: true,
+            status: true,
+            seed: true,
+            targetLabel: true,
+            stateUrl: true,
+            plan: true,
+            report: true,
+            startedAt: true,
+            finishedAt: true,
+            deadlineAt: true,
+            createdAt: true,
+          },
+        });
+        return row
+          ? { ...row, plan: row.plan as JsonValue, report: row.report as JsonValue }
+          : null;
+      },
+
+      /** A run's delivery rows and attempts, without request headers (they hold signatures). */
+      async deliveries(projectId: string, runId: string): Promise<RunDelivery[]> {
+        const rows = await prisma.delivery.findMany({
+          where: { projectId, event: { projectId, scenarioRunId: runId } },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          select: {
+            id: true,
+            eventId: true,
+            status: true,
+            createdAt: true,
+            event: { select: { payload: true } },
+            attempts: {
+              where: { projectId },
+              orderBy: { attemptNo: "asc" },
+              select: {
+                attemptNo: true,
+                startedAt: true,
+                durationMs: true,
+                responseStatus: true,
+                error: true,
+              },
+            },
+          },
+        });
+        return rows.map((r) => ({
+          deliveryId: r.id,
+          eventId: r.eventId,
+          step: (r.event.payload as { _murphy?: { step?: string } })._murphy?.step ?? "",
+          status: r.status,
+          createdAt: r.createdAt,
+          attempts: r.attempts,
+        }));
       },
     },
   };

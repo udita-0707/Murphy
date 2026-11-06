@@ -39,6 +39,8 @@ export function serializeEvent(event: EventWithDeliveries) {
     payload: event.payload,
     idempotency_key: event.idempotencyKey,
     created_at: event.createdAt.toISOString(),
+    simulated: event.scenarioRunId !== null,
+    scenario_run_id: event.scenarioRunId,
     deliveries: event.deliveries.map(serializeDelivery),
   };
 }

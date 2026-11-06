@@ -13,3 +13,4 @@ export {
   type DeliveryQueue,
   type ReapedDelivery,
 } from "./queue.js";
+export { createRunQueue, type RunQueue } from "./run-queue.js";

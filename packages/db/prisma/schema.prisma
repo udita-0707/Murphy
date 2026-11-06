@@ -124,12 +124,16 @@ model Event {
   /// SHA-256 (hex) of canonical JSON of { type, payload }; see ADR 002.
   requestHash    String   @map("request_hash")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  /// Set only on simulated events (ADR 011).
+  scenarioRunId  String?  @map("scenario_run_id") @db.Uuid
 
-  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  deliveries Delivery[]
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scenarioRun ScenarioRun? @relation(fields: [scenarioRunId], references: [id], onDelete: Cascade)
+  deliveries  Delivery[]
 
   @@unique([projectId, idempotencyKey])
   @@index([projectId, createdAt])
+  @@index([scenarioRunId])
   @@map("events")
 }
 
@@ -218,12 +222,23 @@ model ScenarioRun {
   finishedAt DateTime?         @map("finished_at") @db.Timestamptz(6)
   report     Json?             @db.JsonB
   createdAt  DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  seed        Int?
+  /// A readable name for what was tested, such as "naive".
+  targetLabel String?          @map("target_label")
+  /// Where the worker reads the target's state, through the SSRF guard.
+  stateUrl    String?          @map("state_url")
+  /// After this the run counts as stuck.
+  deadlineAt  DateTime?        @map("deadline_at") @db.Timestamptz(6)
+  /// The compiled plan, so later edits to the scenario cannot change this run.
+  plan        Json?            @db.JsonB
 
   project  Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   scenario Scenario          @relation(fields: [scenarioId], references: [id], onDelete: Restrict)
   endpoint Endpoint          @relation(fields: [endpointId], references: [id], onDelete: Cascade)
   entities SimulatedEntity[]
+  events   Event[]
 
+  @@index([status])
   @@index([projectId])
   @@index([scenarioId])
   @@index([endpointId])

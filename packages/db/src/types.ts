@@ -135,6 +135,8 @@ export interface EventRecord {
 }
 
 export interface EventWithDeliveries extends EventRecord {
+  /** Set only on simulated events (ADR 011). */
+  scenarioRunId: string | null;
   deliveries: DeliveryRecord[];
 }
 
@@ -150,3 +152,95 @@ export type AcceptEventResult =
   | { outcome: "created"; eventId: string; deliveries: number }
   | { outcome: "replayed"; eventId: string; deliveries: number }
   | { outcome: "conflict"; eventId: string };
+
+export type ScenarioDifficulty = "beginner" | "intermediate" | "advanced";
+export type ScenarioRunStatus = "pending" | "running" | "passed" | "failed" | "errored";
+
+export interface ScenarioRecord {
+  id: string;
+  /** Null for a public built-in. */
+  projectId: string | null;
+  slug: string;
+  name: string;
+  difficulty: ScenarioDifficulty;
+  definitionYaml: string;
+  isPublic: boolean;
+  createdAt: Date;
+}
+
+export interface SaveScenarioInput {
+  slug: string;
+  name: string;
+  difficulty: ScenarioDifficulty;
+  definitionYaml: string;
+}
+
+export interface RunStepInput {
+  eventType: string;
+  payload: JsonObject;
+  idempotencyKey: string;
+  requestHash: string;
+  /** One delivery row per offset, due this long after the run starts. */
+  dueOffsetsMs: number[];
+}
+
+export interface StartRunInput {
+  id: string;
+  scenarioId: string;
+  endpointId: string;
+  seed: number;
+  targetLabel: string | null;
+  stateUrl: string | null;
+  plan: JsonObject;
+  deadlineOffsetMs: number;
+  entities: { kind: string; externalId: string; state: string }[];
+  steps: RunStepInput[];
+}
+
+export type StartRunResult =
+  | { outcome: "started"; runId: string }
+  | { outcome: "scenario_not_found" }
+  | { outcome: "endpoint_not_available" };
+
+export interface RunRecord {
+  id: string;
+  projectId: string;
+  scenarioId: string;
+  endpointId: string;
+  status: ScenarioRunStatus;
+  seed: number | null;
+  targetLabel: string | null;
+  stateUrl: string | null;
+  plan: JsonValue | null;
+  report: JsonValue | null;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  deadlineAt: Date | null;
+  createdAt: Date;
+}
+
+export interface RunAttempt {
+  attemptNo: number;
+  startedAt: Date;
+  durationMs: number | null;
+  responseStatus: number | null;
+  error: string | null;
+}
+
+/** One delivery row of a run with its attempts, for live timelines and evaluation. */
+export interface RunDelivery {
+  deliveryId: string;
+  eventId: string;
+  /** The step, from the signed block. */
+  step: string;
+  status: DeliveryStatus;
+  createdAt: Date;
+  attempts: RunAttempt[];
+}
+
+/** A run ready to be evaluated: all its rows are finished, or its deadline passed. */
+export interface FinishableRun {
+  id: string;
+  projectId: string;
+  deadlinePassed: boolean;
+}
