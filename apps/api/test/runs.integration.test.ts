@@ -384,3 +384,39 @@ describe("tenant isolation", () => {
     }
   });
 });
+
+describe("scenario summaries", () => {
+  it("lists a scenario's provider and faults, and whether they need the target", async () => {
+    const saved = await saveScenario(
+      a,
+      YAML.replace("api-duplicate", "api-summary").replace(
+        "{ id: created, emit: reservation.created, entity: stay }",
+        "{ id: created, emit: reservation.created, entity: stay, faults: { drop_then_redeliver: { lost: response } } }",
+      ),
+    );
+    const res = await request(local).get("/v1/scenarios").set(a.auth);
+    const row = (res.body as { data: { id: string; summary: unknown }[] }).data.find(
+      (s) => s.id === saved.id,
+    );
+    expect(row?.summary).toEqual({
+      provider: "booking",
+      provider_label: expect.any(String),
+      description: null,
+      steps: 2,
+      faults: [
+        { step: "created", kind: "drop_then_redeliver", realised_by: "target" },
+        { step: "confirmed", kind: "duplicate", realised_by: "engine" },
+      ],
+      needs_target_cooperation: true,
+    });
+  });
+
+  it("says engine-only scenarios need no cooperation", async () => {
+    const saved = await saveScenario(b);
+    const res = await request(local).get("/v1/scenarios").set(b.auth);
+    const row = (
+      res.body as { data: { id: string; summary: { needs_target_cooperation: boolean } }[] }
+    ).data.find((s) => s.id === saved.id);
+    expect(row?.summary.needs_target_cooperation).toBe(false);
+  });
+});

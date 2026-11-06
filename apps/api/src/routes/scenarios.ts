@@ -1,5 +1,11 @@
 import type { Repository, ScenarioRecord } from "@murphy/db";
-import { parseScenario, ScenarioError, type Scenario } from "@murphy/simulator";
+import {
+  parseScenario,
+  ScenarioError,
+  summariseScenario,
+  type Scenario,
+  type ScenarioSummary,
+} from "@murphy/simulator";
 import { Router } from "express";
 import { z } from "zod";
 import { ApiError } from "../errors.js";
@@ -7,6 +13,15 @@ import { projectIdOf } from "../middleware/auth.js";
 import { parse } from "../validation.js";
 
 const createScenarioBody = z.strictObject({ definition_yaml: z.string().min(1) });
+
+/** One stored scenario that no longer parses must not take the whole list down. */
+function summaryOf(yaml: string): ScenarioSummary | null {
+  try {
+    return summariseScenario(parseScenario(yaml));
+  } catch {
+    return null;
+  }
+}
 
 function serializeScenario(scenario: ScenarioRecord) {
   return {
@@ -16,6 +31,7 @@ function serializeScenario(scenario: ScenarioRecord) {
     difficulty: scenario.difficulty,
     builtin: scenario.projectId === null,
     definition_yaml: scenario.definitionYaml,
+    summary: summaryOf(scenario.definitionYaml),
     created_at: scenario.createdAt.toISOString(),
   };
 }

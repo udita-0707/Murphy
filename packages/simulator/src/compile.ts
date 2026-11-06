@@ -138,6 +138,38 @@ function plannedFaults(step: ScenarioStep, scale: (ms: number) => number): Plann
   return out;
 }
 
+export interface ScenarioSummary {
+  provider: string;
+  /** What payloads resemble, such as "Razorpay-style". Payloads are not exact copies. */
+  provider_label: string;
+  description: string | null;
+  steps: number;
+  faults: { step: string; kind: PlannedFault["kind"]; realised_by: FaultRealisedBy }[];
+  /** True when a fault only happens if the target obeys the signed `_murphy` block. */
+  needs_target_cooperation: boolean;
+}
+
+/** What a scenario does, for a list, without compiling a run. */
+export function summariseScenario(scenario: Scenario): ScenarioSummary {
+  const provider = getProvider(scenario.provider);
+  if (!provider) throw new Error(`unknown provider "${scenario.provider}"`);
+  const faults = scenario.timeline.flatMap((step) =>
+    plannedFaults(step, (ms) => ms).map((fault) => ({
+      step: step.id,
+      kind: fault.kind,
+      realised_by: fault.realised_by,
+    })),
+  );
+  return {
+    provider: provider.name,
+    provider_label: provider.label,
+    description: scenario.description ?? null,
+    steps: scenario.timeline.length,
+    faults,
+    needs_target_cooperation: faults.some((f) => f.realised_by === "target"),
+  };
+}
+
 /** The order steps are sent in: logical order, with each reordered step moved before its target. */
 function sendOrder(timeline: readonly ScenarioStep[]): ScenarioStep[] {
   const order = [...timeline];
