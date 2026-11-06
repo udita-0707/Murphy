@@ -3,8 +3,15 @@ import type { JsonObject, Repository } from "@murphy/db";
 import { Router } from "express";
 import { ApiError, notFound } from "../errors.js";
 import { projectIdOf } from "../middleware/auth.js";
-import { serializeEvent } from "../serializers.js";
-import { createEventBody, idempotencyKey, parse, uuidParam } from "../validation.js";
+import { serializeEvent, serializeEventRow } from "../serializers.js";
+import {
+  createEventBody,
+  encodeCursor,
+  idempotencyKey,
+  listEventsQuery,
+  parse,
+  uuidParam,
+} from "../validation.js";
 
 export const IDEMPOTENCY_KEY_HEADER = "idempotency-key";
 export const IDEMPOTENT_REPLAYED_HEADER = "Idempotent-Replayed";
@@ -46,6 +53,19 @@ export function eventsRouter(repo: Repository): Router {
           "this Idempotency-Key was already used with a different event type or payload",
         );
     }
+  });
+
+  router.get("/", async (req, res) => {
+    const query = parse(listEventsQuery, req.query);
+    const page = await repo.events.list(projectIdOf(res), {
+      simulated: query.simulated,
+      limit: query.limit,
+      cursor: query.cursor,
+    });
+    res.json({
+      data: page.data.map(serializeEventRow),
+      next_cursor: page.nextCursor ? encodeCursor(page.nextCursor) : null,
+    });
   });
 
   router.get("/:id", async (req, res) => {

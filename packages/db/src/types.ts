@@ -93,10 +93,38 @@ export interface DeliveryListFilter {
   status?: DeliveryStatus;
   endpointId?: string;
   eventId?: string;
+  /** True for simulator traffic only, false to leave it out, unset for everything. */
+  simulated?: boolean;
   /** Page size, 1..100. */
   limit: number;
   /** Keyset cursor from a previous page. */
   cursor?: DeliveryCursor;
+}
+
+export interface DeliveryListRow extends DeliveryRecord {
+  eventType: string;
+  simulated: boolean;
+}
+
+export interface EventListFilter {
+  simulated?: boolean;
+  /** Page size, 1..100. */
+  limit: number;
+  cursor?: DeliveryCursor;
+}
+
+export interface EventListRow {
+  id: string;
+  type: string;
+  idempotencyKey: string;
+  createdAt: Date;
+  scenarioRunId: string | null;
+  deliveryCount: number;
+}
+
+export interface EventPage {
+  data: EventListRow[];
+  nextCursor: DeliveryCursor | null;
 }
 
 /** Position after the last row of a page, ordered by (created_at, id) descending. */
@@ -106,7 +134,7 @@ export interface DeliveryCursor {
 }
 
 export interface DeliveryPage {
-  data: DeliveryRecord[];
+  data: DeliveryListRow[];
   nextCursor: DeliveryCursor | null;
 }
 

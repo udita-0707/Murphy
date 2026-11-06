@@ -420,3 +420,98 @@ describe("scenario summaries", () => {
     expect(row?.summary.needs_target_cooperation).toBe(false);
   });
 });
+
+describe("listing events and hiding simulated traffic", () => {
+  let c: TestProject;
+  let other: TestProject;
+  let ordinaryEvent: string;
+
+  beforeAll(async () => {
+    c = await createProject(env.repo, "listing");
+    other = await createProject(env.repo, "listing-other");
+    const endpoint = await request(local)
+      .post("/v1/endpoints")
+      .set(c.auth)
+      .send({ url: "http://127.0.0.1:4343/ordinary" });
+    expect(endpoint.status).toBe(201);
+    const event = await request(local)
+      .post("/v1/events")
+      .set(c.auth)
+      .set("Idempotency-Key", "listing-1")
+      .send({ type: "order.paid", payload: { a: 1 } });
+    expect(event.status).toBe(202);
+    ordinaryEvent = (event.body as { id: string }).id;
+    await startRun(c);
+  });
+
+  type EventRow = { id: string; type: string; simulated: boolean; deliveries: number };
+  type DeliveryRow = { event_id: string; event_type: string; simulated: boolean };
+  const events = async (query = "", project = c) => {
+    const res = await request(local).get(`/v1/events${query}`).set(project.auth);
+    expect(res.status).toBe(200);
+    return res.body as { data: EventRow[]; next_cursor: string | null };
+  };
+  const deliveries = async (route: string, project = c) => {
+    const res = await request(local).get(route).set(project.auth);
+    expect(res.status).toBe(200);
+    return (res.body as { data: DeliveryRow[] }).data;
+  };
+
+  it("lists events newest first, marked, with their delivery counts", async () => {
+    const { data } = await events();
+    expect(data.some((e) => e.simulated)).toBe(true);
+    expect(data.find((e) => e.id === ordinaryEvent)).toMatchObject({
+      type: "order.paid",
+      simulated: false,
+      deliveries: 1,
+    });
+  });
+
+  it("does not put a payload in the list", async () => {
+    const { data } = await events();
+    expect(data[0]).not.toHaveProperty("payload");
+  });
+
+  it("filters events either way", async () => {
+    const hidden = await events("?simulated=false");
+    expect(hidden.data.map((e) => e.id)).toEqual([ordinaryEvent]);
+    const only = await events("?simulated=true");
+    expect(only.data.length).toBeGreaterThan(0);
+    expect(only.data.every((e) => e.simulated)).toBe(true);
+  });
+
+  it("pages events with a cursor, with nothing repeated", async () => {
+    const first = await events("?limit=1");
+    expect(first.data).toHaveLength(1);
+    expect(first.next_cursor).not.toBeNull();
+    const second = await events(`?limit=1&cursor=${first.next_cursor}`);
+    expect(second.data[0]?.id).not.toBe(first.data[0]?.id);
+  });
+
+  it("refuses a bad filter value", async () => {
+    const res = await request(local).get("/v1/events?simulated=maybe").set(c.auth);
+    expect(res.status).toBe(400);
+  });
+
+  it("filters deliveries, and says what each one is", async () => {
+    const hidden = await deliveries("/v1/deliveries?simulated=false");
+    expect(hidden).toHaveLength(1);
+    expect(hidden[0]).toMatchObject({
+      event_id: ordinaryEvent,
+      event_type: "order.paid",
+      simulated: false,
+    });
+    const only = await deliveries("/v1/deliveries?simulated=true");
+    expect(only.length).toBeGreaterThan(0);
+    expect(only.every((d) => d.simulated)).toBe(true);
+  });
+
+  it("accepts the filter on the DLQ", async () => {
+    expect(await deliveries("/v1/dlq?simulated=false")).toEqual([]);
+  });
+
+  it("never shows one project another project's events", async () => {
+    expect((await events("", other)).data).toEqual([]);
+    expect(await deliveries("/v1/deliveries?simulated=true", other)).toEqual([]);
+  });
+});

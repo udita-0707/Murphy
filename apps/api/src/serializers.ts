@@ -1,8 +1,10 @@
 import type {
   DeliveryAttemptRecord,
+  DeliveryListRow,
   DeliveryRecord,
   DeliveryWithAttempts,
   EndpointRecord,
+  EventListRow,
   EventWithDeliveries,
 } from "@murphy/db";
 
@@ -29,6 +31,22 @@ export function serializeDelivery(delivery: DeliveryRecord) {
     last_error: delivery.lastError,
     created_at: delivery.createdAt.toISOString(),
     completed_at: delivery.completedAt?.toISOString() ?? null,
+  };
+}
+
+export function serializeDeliveryRow(row: DeliveryListRow) {
+  return { ...serializeDelivery(row), event_type: row.eventType, simulated: row.simulated };
+}
+
+export function serializeEventRow(event: EventListRow) {
+  return {
+    id: event.id,
+    type: event.type,
+    idempotency_key: event.idempotencyKey,
+    created_at: event.createdAt.toISOString(),
+    simulated: event.scenarioRunId !== null,
+    scenario_run_id: event.scenarioRunId,
+    deliveries: event.deliveryCount,
   };
 }
 

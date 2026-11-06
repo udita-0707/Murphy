@@ -84,16 +84,27 @@ const cursorParam = z.string().transform((value, ctx) => {
 
 const limitParam = z.coerce.number().int().min(1).max(100).default(50);
 
+/** `true` or `false` in a query string. */
+const simulatedParam = z.enum(["true", "false"]).transform((value) => value === "true");
+
+export const listEventsQuery = z.strictObject({
+  simulated: simulatedParam.optional(),
+  limit: limitParam,
+  cursor: cursorParam.optional(),
+});
+
 export const listDeliveriesQuery = z.strictObject({
   status: deliveryStatus.optional(),
   endpoint_id: z.uuid().optional(),
   event_id: z.uuid().optional(),
+  simulated: simulatedParam.optional(),
   limit: limitParam,
   cursor: cursorParam.optional(),
 });
 
 export const listDlqQuery = z.strictObject({
   endpoint_id: z.uuid().optional(),
+  simulated: simulatedParam.optional(),
   limit: limitParam,
   cursor: cursorParam.optional(),
 });

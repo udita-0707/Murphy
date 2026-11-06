@@ -11,6 +11,8 @@ import {
   type DeliveryRecord,
   type DeliveryWithAttempts,
   type EndpointRecord,
+  type EventListFilter,
+  type EventPage,
   type EventWithDeliveries,
   type JsonValue,
   type ProjectPlan,
@@ -166,6 +168,9 @@ export function createRepository(prisma: PrismaClient) {
           ...(filter.status ? { status: filter.status } : {}),
           ...(filter.endpointId ? { endpointId: filter.endpointId } : {}),
           ...(filter.eventId ? { eventId: filter.eventId } : {}),
+          ...(filter.simulated === undefined
+            ? {}
+            : { event: { projectId, scenarioRunId: filter.simulated ? { not: null } : null } }),
           ...(filter.cursor
             ? {
                 OR: [
@@ -179,12 +184,16 @@ export function createRepository(prisma: PrismaClient) {
           where,
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: filter.limit + 1,
-          select: deliverySelect,
+          select: { ...deliverySelect, event: { select: { type: true, scenarioRunId: true } } },
         });
-        const data = rows.slice(0, filter.limit);
-        const last = data[data.length - 1];
+        const page = rows.slice(0, filter.limit);
+        const last = page[page.length - 1];
         return {
-          data,
+          data: page.map(({ event, ...delivery }) => ({
+            ...delivery,
+            eventType: event.type,
+            simulated: event.scenarioRunId !== null,
+          })),
           nextCursor:
             rows.length > filter.limit && last ? { createdAt: last.createdAt, id: last.id } : null,
         };
@@ -333,6 +342,46 @@ export function createRepository(prisma: PrismaClient) {
           }
           return { outcome: "replayed", eventId: row.id, deliveries: row.deliveries };
         });
+      },
+
+      /** Newest first, keyset-paginated on (created_at, id). */
+      async list(projectId: string, filter: EventListFilter): Promise<EventPage> {
+        const rows = await prisma.event.findMany({
+          where: {
+            projectId,
+            ...(filter.simulated === undefined
+              ? {}
+              : { scenarioRunId: filter.simulated ? { not: null } : null }),
+            ...(filter.cursor
+              ? {
+                  OR: [
+                    { createdAt: { lt: filter.cursor.createdAt } },
+                    { createdAt: filter.cursor.createdAt, id: { lt: filter.cursor.id } },
+                  ],
+                }
+              : {}),
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: filter.limit + 1,
+          select: {
+            id: true,
+            type: true,
+            idempotencyKey: true,
+            createdAt: true,
+            scenarioRunId: true,
+            _count: { select: { deliveries: { where: { projectId } } } },
+          },
+        });
+        const page = rows.slice(0, filter.limit);
+        const last = page[page.length - 1];
+        return {
+          data: page.map(({ _count, ...event }) => ({
+            ...event,
+            deliveryCount: _count.deliveries,
+          })),
+          nextCursor:
+            rows.length > filter.limit && last ? { createdAt: last.createdAt, id: last.id } : null,
+        };
       },
 
       async getWithDeliveries(projectId: string, id: string): Promise<EventWithDeliveries | null> {

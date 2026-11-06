@@ -2,7 +2,11 @@ import { BULK_REPLAY_CAP, type Repository } from "@murphy/db";
 import { Router } from "express";
 import { ApiError, notFound } from "../errors.js";
 import { projectIdOf } from "../middleware/auth.js";
-import { serializeDelivery, serializeDeliveryWithAttempts } from "../serializers.js";
+import {
+  serializeDelivery,
+  serializeDeliveryRow,
+  serializeDeliveryWithAttempts,
+} from "../serializers.js";
 import {
   bulkReplayBody,
   dlqRetryBody,
@@ -23,11 +27,12 @@ export function deliveriesRouter(repo: Repository): Router {
       status: query.status,
       endpointId: query.endpoint_id,
       eventId: query.event_id,
+      simulated: query.simulated,
       limit: query.limit,
       cursor: query.cursor,
     });
     res.json({
-      data: page.data.map(serializeDelivery),
+      data: page.data.map(serializeDeliveryRow),
       next_cursor: page.nextCursor ? encodeCursor(page.nextCursor) : null,
     });
   });
@@ -91,11 +96,12 @@ export function dlqRouter(repo: Repository): Router {
     const page = await repo.deliveries.list(projectIdOf(res), {
       status: "dead",
       endpointId: query.endpoint_id,
+      simulated: query.simulated,
       limit: query.limit,
       cursor: query.cursor,
     });
     res.json({
-      data: page.data.map(serializeDelivery),
+      data: page.data.map(serializeDeliveryRow),
       next_cursor: page.nextCursor ? encodeCursor(page.nextCursor) : null,
     });
   });
