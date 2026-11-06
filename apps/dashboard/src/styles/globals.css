@@ -1,0 +1,74 @@
+/* Hallmark · shape: app screen · genre: modern-minimal · theme: Wayfind (deal 1/3, seed murphy-chaos-testing-dashboard-webhooks-04c6·2f534ec8·2026-11-06·r0)
+ * nav: top bar · signature: the shared row spine ending in the diverging figure · states: loading, empty, error, full · wayfind: night
+ * axes: light/mono/cool · posture: committed · contrast: pass · v2.0.0 */
+/* Hallmark · pre-emit critique: P4 H5 E4 S5 R4 V5 · weakest: E, a long report reason crowded the fold at 768p; on short screens it now sits beside its plate */
+@import "./tokens.css";
+@import "./base.css";
+@import "./fonts.css";
+@import "./report.css";
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme inline {
+  --color-*: initial;
+  --font-*: initial;
+  --color-paper: var(--color-paper);
+  --color-ink: var(--color-ink);
+  --color-muted: var(--color-muted);
+  --font-mono: var(--font-body);
+}
+
+body {
+  background: var(--color-paper);
+}
+.page {
+  padding-block: var(--space-lg) var(--space-2xl);
+}
+.preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  min-height: var(--control-height);
+  padding: 0 var(--space-lg);
+  border: var(--rule-bar) solid var(--color-border);
+  background: transparent;
+  color: var(--color-ink);
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--dur-micro) steps(1);
+  white-space: nowrap;
+}
+.btn:hover {
+  background: var(--color-paper-3);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn[aria-busy="true"] {
+  cursor: progress;
+}
+.btn--primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+.btn--primary:hover {
+  background: var(--color-live);
+}

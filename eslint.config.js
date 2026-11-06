@@ -14,6 +14,7 @@ export default tseslint.config(
       "**/generated/**",
       "**/.next/**",
       ".claude/**",
+      "**/next-env.d.ts",
     ],
   },
   js.configs.recommended,

@@ -1,0 +1,188 @@
+{
+  "run": {
+    "id": "76b99f0b-792f-419c-bd8c-354c73548627",
+    "seed": 5153,
+    "reason": null,
+    "status": "passed",
+    "started_at": "2026-11-06T20:09:04.109Z",
+    "duration_ms": 10843,
+    "finished_at": "2026-11-06T20:09:14.952Z"
+  },
+  "steps": [
+    {
+      "id": "authorized",
+      "index": 0,
+      "entity": "order",
+      "event_id": "1170a0b7-e572-4476-a31e-f091d2f5bf09",
+      "deliveries": [
+        {
+          "status": "succeeded",
+          "attempts": [
+            {
+              "at_ms": 1051,
+              "error": null,
+              "status": 200,
+              "attempt_no": 1,
+              "started_at": "2026-11-06T20:09:05.160Z",
+              "duration_ms": 3
+            }
+          ],
+          "delivery_id": "538e8dad-ee51-4570-937f-36b26d32189e"
+        }
+      ],
+      "event_type": "payment.authorized",
+      "webhook_id": "msg_1170a0b7-e572-4476-a31e-f091d2f5bf09",
+      "fault_kinds": [],
+      "planned_offsets_ms": [1000],
+      "provider_entity_id": "pay_9YTMJkGedbaLY6"
+    },
+    {
+      "id": "failed",
+      "index": 1,
+      "entity": "order",
+      "event_id": "98dcbd09-3f60-480c-b3b5-0e8749c99ed6",
+      "deliveries": [
+        {
+          "status": "succeeded",
+          "attempts": [
+            {
+              "at_ms": 4588,
+              "error": null,
+              "status": 503,
+              "attempt_no": 1,
+              "started_at": "2026-11-06T20:09:08.697Z",
+              "duration_ms": 3
+            },
+            {
+              "at_ms": 10153,
+              "error": null,
+              "status": 200,
+              "attempt_no": 2,
+              "started_at": "2026-11-06T20:09:14.262Z",
+              "duration_ms": 3
+            }
+          ],
+          "delivery_id": "1d067268-5a53-405b-95cd-606ee8d09429"
+        }
+      ],
+      "event_type": "payment.failed",
+      "webhook_id": "msg_98dcbd09-3f60-480c-b3b5-0e8749c99ed6",
+      "fault_kinds": ["delay", "drop_then_redeliver"],
+      "planned_offsets_ms": [4500],
+      "provider_entity_id": "pay_9YTMJkGedbaLY6"
+    }
+  ],
+  "faults": [
+    {
+      "kind": "delay",
+      "step": "failed",
+      "detail": "Sent 2000 ms later than planned",
+      "evidence": "First attempt at 4588 ms, planned for 4500 ms or later",
+      "realised": true,
+      "realised_by": "engine"
+    },
+    {
+      "kind": "drop_then_redeliver",
+      "step": "failed",
+      "detail": "First attempt reaches the handler, but its reply is lost, so Murphy retries",
+      "evidence": "Attempts answered: 503, 200",
+      "realised": true,
+      "realised_by": "target"
+    }
+  ],
+  "limits": [
+    "Payloads resemble the named provider's shape. They are not exact copies, so a handler can pass here and still meet a field it does not expect in production.",
+    "The target's final state is what the target itself reported. Murphy cannot see inside it, so a wrong state endpoint gives a wrong result.",
+    "A pass means this handler survived these faults, in this run. It does not prove the handler is correct for others, or under concurrent delivery on several servers."
+  ],
+  "target": {
+    "handler": "idempotent",
+    "endpoint_id": "c32d2848-c1bf-46d8-87e1-b33b942a07cf"
+  },
+  "summary": {
+    "attempts": 3,
+    "deliveries": 2,
+    "faults_planned": 2,
+    "faults_realised": 2,
+    "assertions_failed": 0,
+    "assertions_passed": 2
+  },
+  "entities": [
+    {
+      "id": "order",
+      "kind": "payment",
+      "actual": {
+        "state": "failed",
+        "effects": {
+          "hold": 0,
+          "credit": 0,
+          "refund": 0,
+          "booking": 0
+        },
+        "balance_minor": 0
+      },
+      "expected": {
+        "state": "failed",
+        "effects": {
+          "hold": 0,
+          "credit": 0,
+          "refund": 0,
+          "booking": 0
+        },
+        "balance_minor": 0
+      },
+      "provider_id": "pay_9YTMJkGedbaLY6"
+    }
+  ],
+  "scenario": {
+    "name": "Delayed failure, then a retry after a lost reply",
+    "slug": "payment-delayed-failure-retry",
+    "provider": "payments",
+    "difficulty": "intermediate",
+    "provider_label": "Razorpay-style"
+  },
+  "timeline": [
+    {
+      "step": "authorized",
+      "at_ms": 1051,
+      "error": null,
+      "status": 200,
+      "attempt_no": 1,
+      "event_type": "payment.authorized",
+      "delivery_id": "538e8dad-ee51-4570-937f-36b26d32189e"
+    },
+    {
+      "step": "failed",
+      "at_ms": 4588,
+      "error": null,
+      "status": 503,
+      "attempt_no": 1,
+      "event_type": "payment.failed",
+      "delivery_id": "1d067268-5a53-405b-95cd-606ee8d09429"
+    },
+    {
+      "step": "failed",
+      "at_ms": 10153,
+      "error": null,
+      "status": 200,
+      "attempt_no": 2,
+      "event_type": "payment.failed",
+      "delivery_id": "1d067268-5a53-405b-95cd-606ee8d09429"
+    }
+  ],
+  "assertions": [
+    {
+      "kind": "final_state",
+      "entity": "order",
+      "reason": "Ended in \"failed\"",
+      "status": "pass"
+    },
+    {
+      "kind": "exactly_once_effect",
+      "entity": "order",
+      "reason": "Every effect was applied exactly as often as it should be",
+      "status": "pass"
+    }
+  ],
+  "schema_version": 1
+}

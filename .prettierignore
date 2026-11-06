@@ -7,3 +7,4 @@ packages/db/prisma/migrations
 docs/BRIEF.md
 .claude
 .next
+.hallmark

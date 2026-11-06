@@ -1,0 +1,28 @@
+[
+ {
+  "scope": "app",
+  "shape": "app screen",
+  "theme": "wayfind",
+  "axes": "light/mono/cool",
+  "hero": "split-screen comparison board",
+  "nav": "top bar",
+  "footer": "none",
+  "imagery": "none, real run data",
+  "photos": [],
+  "entry": "none",
+  "fingerprint": "wayfind-night-spine-board",
+  "sections": [
+   "verdict plates",
+   "row spine",
+   "diverging figure"
+  ],
+  "signature": "shared row spine ending in the diverging figure",
+  "waived": [
+   "verdict colours",
+   "control height"
+  ],
+  "prompt": "Murphy chaos-testing dashboard, projector demo, sharp dark humour",
+  "date": "2026-11-06",
+  "mode": "build"
+ }
+]

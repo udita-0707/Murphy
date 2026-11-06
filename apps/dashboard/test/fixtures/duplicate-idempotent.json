@@ -1,0 +1,192 @@
+{
+  "run": {
+    "id": "2243fee6-87f5-4e85-b901-30e20c0d3bf7",
+    "seed": 4242,
+    "reason": null,
+    "status": "passed",
+    "started_at": "2026-11-06T20:08:54.098Z",
+    "duration_ms": 4856,
+    "finished_at": "2026-11-06T20:08:58.954Z"
+  },
+  "steps": [
+    {
+      "id": "created",
+      "index": 0,
+      "entity": "stay",
+      "event_id": "e5d900f8-0260-413e-98e9-720f6c8d9e1f",
+      "deliveries": [
+        {
+          "status": "succeeded",
+          "attempts": [
+            {
+              "at_ms": 1392,
+              "error": null,
+              "status": 200,
+              "attempt_no": 1,
+              "started_at": "2026-11-06T20:08:55.490Z",
+              "duration_ms": 20
+            }
+          ],
+          "delivery_id": "e385e0dd-b472-490e-861d-c4101a9aa95d"
+        }
+      ],
+      "event_type": "reservation.created",
+      "webhook_id": "msg_e5d900f8-0260-413e-98e9-720f6c8d9e1f",
+      "fault_kinds": [],
+      "planned_offsets_ms": [1000],
+      "provider_entity_id": "res_zjFvmGHgKPfouc"
+    },
+    {
+      "id": "confirmed",
+      "index": 1,
+      "entity": "stay",
+      "event_id": "e63cf8b9-3420-4183-86b2-710db476e2d0",
+      "deliveries": [
+        {
+          "status": "succeeded",
+          "attempts": [
+            {
+              "at_ms": 4465,
+              "error": null,
+              "status": 200,
+              "attempt_no": 1,
+              "started_at": "2026-11-06T20:08:58.563Z",
+              "duration_ms": 2
+            }
+          ],
+          "delivery_id": "0f018f11-d257-4113-9ea8-5988ee0bae62"
+        },
+        {
+          "status": "succeeded",
+          "attempts": [
+            {
+              "at_ms": 2941,
+              "error": null,
+              "status": 200,
+              "attempt_no": 1,
+              "started_at": "2026-11-06T20:08:57.039Z",
+              "duration_ms": 5
+            }
+          ],
+          "delivery_id": "f2d0dbfb-21ec-49af-981d-a083765153d2"
+        }
+      ],
+      "event_type": "reservation.confirmed",
+      "webhook_id": "msg_e63cf8b9-3420-4183-86b2-710db476e2d0",
+      "fault_kinds": ["duplicate"],
+      "planned_offsets_ms": [2500, 4000],
+      "provider_entity_id": "res_zjFvmGHgKPfouc"
+    }
+  ],
+  "faults": [
+    {
+      "kind": "duplicate",
+      "step": "confirmed",
+      "detail": "Sent again 1500 ms later, with the same webhook-id",
+      "evidence": "2 deliveries with the same webhook-id got a 2xx",
+      "realised": true,
+      "realised_by": "engine"
+    }
+  ],
+  "limits": [
+    "Payloads resemble the named provider's shape. They are not exact copies, so a handler can pass here and still meet a field it does not expect in production.",
+    "The target's final state is what the target itself reported. Murphy cannot see inside it, so a wrong state endpoint gives a wrong result.",
+    "A pass means this handler survived these faults, in this run. It does not prove the handler is correct for others, or under concurrent delivery on several servers."
+  ],
+  "target": {
+    "handler": "idempotent",
+    "endpoint_id": "78a93c98-0341-425e-9165-8c10cd4c3884"
+  },
+  "summary": {
+    "attempts": 3,
+    "deliveries": 3,
+    "faults_planned": 1,
+    "faults_realised": 1,
+    "assertions_failed": 0,
+    "assertions_passed": 3
+  },
+  "entities": [
+    {
+      "id": "stay",
+      "kind": "reservation",
+      "actual": {
+        "state": "confirmed",
+        "effects": {
+          "hold": 0,
+          "credit": 0,
+          "refund": 0,
+          "booking": 1
+        },
+        "balance_minor": 0
+      },
+      "expected": {
+        "state": "confirmed",
+        "effects": {
+          "hold": 0,
+          "credit": 0,
+          "refund": 0,
+          "booking": 1
+        },
+        "balance_minor": 0
+      },
+      "provider_id": "res_zjFvmGHgKPfouc"
+    }
+  ],
+  "scenario": {
+    "name": "Duplicate confirmation webhook causes a double booking",
+    "slug": "booking-duplicate-confirmation",
+    "provider": "booking",
+    "difficulty": "beginner",
+    "provider_label": "Booking platform style"
+  },
+  "timeline": [
+    {
+      "step": "created",
+      "at_ms": 1392,
+      "error": null,
+      "status": 200,
+      "attempt_no": 1,
+      "event_type": "reservation.created",
+      "delivery_id": "e385e0dd-b472-490e-861d-c4101a9aa95d"
+    },
+    {
+      "step": "confirmed",
+      "at_ms": 2941,
+      "error": null,
+      "status": 200,
+      "attempt_no": 1,
+      "event_type": "reservation.confirmed",
+      "delivery_id": "f2d0dbfb-21ec-49af-981d-a083765153d2"
+    },
+    {
+      "step": "confirmed",
+      "at_ms": 4465,
+      "error": null,
+      "status": 200,
+      "attempt_no": 1,
+      "event_type": "reservation.confirmed",
+      "delivery_id": "0f018f11-d257-4113-9ea8-5988ee0bae62"
+    }
+  ],
+  "assertions": [
+    {
+      "kind": "no_double_booking",
+      "entity": "stay",
+      "reason": "Holds 1 booking(s)",
+      "status": "pass"
+    },
+    {
+      "kind": "final_state",
+      "entity": "stay",
+      "reason": "Ended in \"confirmed\"",
+      "status": "pass"
+    },
+    {
+      "kind": "exactly_once_effect",
+      "entity": "stay",
+      "reason": "Every effect was applied exactly as often as it should be",
+      "status": "pass"
+    }
+  ],
+  "schema_version": 1
+}

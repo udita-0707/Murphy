@@ -1,0 +1,574 @@
+/* Report and board components, shared with the HTML exports. Plain CSS on tokens, so an export needs no Tailwind. */
+
+/* The three verdicts. Each differs in shape and wording, so colour is never the only signal. */
+.verdict {
+  display: grid;
+  gap: var(--space-sm);
+  align-content: start;
+  min-width: 0;
+}
+.verdict__plate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  width: fit-content;
+  max-width: 100%;
+  padding: var(--space-sm) var(--space-lg);
+  font-size: var(--text-verdict);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: var(--tracking-display);
+}
+.verdict__plate svg {
+  width: 0.72em;
+  height: 0.72em;
+  flex: none;
+}
+.verdict__line {
+  font-size: var(--text-row);
+  font-weight: 500;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.verdict__why {
+  color: var(--color-ink-2);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.verdict--failed .verdict__plate {
+  background: var(--color-fail);
+  border: var(--rule-verdict) solid var(--color-fail);
+  color: var(--color-fail-ink);
+}
+.verdict--passed .verdict__plate {
+  background: transparent;
+  border: var(--rule-bar) solid var(--color-pass);
+  color: var(--color-pass);
+}
+.verdict--errored .verdict__plate {
+  position: relative;
+  border: var(--rule-verdict) dashed var(--color-amber);
+  color: var(--color-errored-text);
+  padding-top: var(--space-lg);
+}
+.verdict--errored .verdict__plate::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 12px;
+  background: repeating-linear-gradient(135deg, var(--color-amber) 0 10px, transparent 10px 20px);
+}
+.verdict--pending .verdict__plate {
+  border: var(--rule-bar) solid var(--color-rule);
+  color: var(--color-live);
+  font-size: var(--text-head);
+  min-height: calc(var(--text-verdict) + var(--space-lg));
+}
+.verdict--none .verdict__plate {
+  border: var(--rule-bar) dotted var(--color-muted);
+  color: var(--color-ink-2);
+  font-size: var(--text-head);
+  min-height: calc(var(--text-verdict) + var(--space-lg));
+}
+
+/* Small status badges keep the same three shapes. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: max(var(--space-2xs), 0.3em) max(var(--space-xs), 0.5em);
+  font-size: var(--text-label);
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.badge svg {
+  width: 0.85em;
+  height: 0.85em;
+  flex: none;
+}
+.badge--failed {
+  background: var(--color-fail);
+  border: var(--rule-bar) solid var(--color-fail);
+  color: var(--color-fail-ink);
+}
+.badge--passed {
+  border: var(--rule-bar) solid var(--color-pass);
+  color: var(--color-pass);
+}
+.badge--errored {
+  border: var(--rule-bar) dashed var(--color-amber);
+  color: var(--color-errored-text);
+}
+.badge--running {
+  border: var(--rule-bar) solid var(--color-rule);
+  color: var(--color-live);
+}
+.badge--muted {
+  border: var(--rule-bar) dotted var(--color-muted);
+  color: var(--color-ink-2);
+  font-weight: 500;
+}
+
+/* Fault chips: Engine is solid, Target is outlined, and both say which. */
+.chip {
+  display: inline-block;
+  padding: max(var(--space-2xs), 0.3em) max(var(--space-xs), 0.5em);
+  font-size: var(--text-label);
+  font-weight: 500;
+  line-height: 1.3;
+}
+.chip--engine {
+  background: var(--color-ink);
+  border: var(--rule-bar) solid var(--color-ink);
+  color: var(--color-paper);
+}
+.chip--target {
+  border: var(--rule-bar) solid var(--color-ink);
+  color: var(--color-ink);
+}
+
+/* The board: both handlers either side of one shared spine. */
+.board {
+  --tracks: minmax(0, 3fr) minmax(0, 4fr) minmax(0, 3fr);
+  display: grid;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+.board__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-md) var(--space-xl);
+}
+.board__title {
+  max-width: none;
+  font-size: var(--text-head);
+}
+.board__heading {
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+.board__meta {
+  margin-top: var(--space-2xs);
+  color: var(--color-muted);
+  font-size: var(--text-label);
+}
+.board__sides {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-xl);
+}
+.board__side {
+  min-width: 0;
+}
+.board__side:last-child {
+  text-align: right;
+}
+.board__side:last-child .verdict {
+  justify-items: end;
+}
+.board__handler {
+  margin-bottom: var(--space-xs);
+  font-size: var(--text-row);
+  font-weight: 500;
+}
+
+.spine {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--text-row);
+  font-variant-numeric: tabular-nums;
+  border-top: var(--rule-bar) solid var(--color-border);
+  border-bottom: var(--rule-bar) solid var(--color-border);
+}
+.spine th {
+  padding: var(--space-xs) var(--space-md);
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: var(--color-muted);
+  text-align: left;
+  border-bottom: var(--rule-bar) solid var(--color-border);
+}
+.spine td {
+  padding: var(--space-sm) var(--space-md);
+  vertical-align: top;
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+}
+.spine tr:last-child td {
+  border-bottom: 0;
+}
+.spine__mid {
+  background: var(--color-paper-2);
+}
+.spine th.spine__mid {
+  text-align: center;
+}
+.spine__event {
+  display: block;
+  font-weight: 500;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.spine__sub {
+  display: block;
+  font-size: var(--text-label);
+  color: var(--color-muted);
+  text-align: center;
+}
+.spine__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2xs);
+  margin-top: var(--space-2xs);
+}
+
+.cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2xs) var(--space-md);
+}
+.cell__at {
+  font-weight: 500;
+}
+.cell__reply {
+  font-weight: 800;
+}
+.cell__reply--bad {
+  padding: 0 var(--space-xs);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.cell--due {
+  color: var(--color-muted);
+}
+.cell--absent {
+  color: var(--color-muted);
+  font-size: var(--text-label);
+  font-style: normal;
+}
+
+/* The diverging figure ends the spine. */
+.figure {
+  display: grid;
+  grid-template-columns: var(--tracks);
+  gap: var(--space-lg);
+  align-items: center;
+  padding-block: var(--space-md);
+}
+.figure__value {
+  font-size: var(--text-figure);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-figure);
+  letter-spacing: var(--tracking-display);
+  text-align: center;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.figure__value--text {
+  font-size: var(--text-head);
+}
+.figure__label {
+  display: grid;
+  gap: var(--space-2xs);
+  text-align: center;
+}
+.figure__name {
+  font-size: var(--text-head);
+  font-weight: 800;
+}
+.figure__expected {
+  color: var(--color-muted);
+}
+.figure__more {
+  font-size: var(--text-label);
+  color: var(--color-muted);
+}
+.figure__statement {
+  padding: var(--space-lg);
+  font-size: var(--text-head);
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+}
+.figure__statement--void {
+  border: var(--rule-verdict) dashed var(--color-amber);
+  color: var(--color-errored-text);
+}
+.figure__statement--plain {
+  border: var(--rule-bar) solid var(--color-border);
+}
+.figure__statement--wait {
+  border: var(--rule-bar) solid var(--color-rule);
+  color: var(--color-live);
+  font-weight: 500;
+}
+
+/* The single run report. */
+.report {
+  display: grid;
+  gap: var(--space-xl);
+  min-width: 0;
+}
+.section {
+  display: grid;
+  gap: var(--space-md);
+  min-width: 0;
+}
+.section__head {
+  font-size: var(--text-head);
+}
+.section__note {
+  color: var(--color-muted);
+  max-width: 80ch;
+}
+.facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-sm) var(--space-lg);
+  margin: 0;
+}
+.facts dt {
+  font-size: var(--text-label);
+  color: var(--color-muted);
+}
+.facts dd {
+  margin: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
+  gap: var(--space-md);
+}
+.card {
+  display: grid;
+  gap: var(--space-xs);
+  align-content: start;
+  padding: var(--space-md);
+  border: var(--rule-bar) solid var(--color-rule);
+  min-width: 0;
+}
+.card--failed {
+  border-color: var(--color-fail);
+}
+.card--not_evaluated {
+  border-style: dashed;
+  border-color: var(--color-amber);
+}
+.card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  font-weight: 800;
+}
+.card__body {
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.card__evidence {
+  font-size: var(--text-label);
+  color: var(--color-ink-2);
+  overflow-wrap: anywhere;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.table th {
+  padding: var(--space-xs) var(--space-md) var(--space-xs) 0;
+  font-size: var(--text-label);
+  font-weight: 500;
+  color: var(--color-muted);
+  text-align: left;
+  border-bottom: var(--rule-bar) solid var(--color-border);
+  white-space: nowrap;
+}
+.table td {
+  padding: var(--space-sm) var(--space-md) var(--space-sm) 0;
+  border-bottom: var(--rule-hair) solid var(--color-rule);
+  overflow-wrap: anywhere;
+}
+.table__differs {
+  font-weight: 800;
+  color: var(--color-figure);
+}
+
+.limits {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0;
+  padding-left: var(--space-lg);
+  max-width: 90ch;
+  color: var(--color-ink-2);
+}
+
+.code {
+  margin: 0;
+  padding: var(--space-md);
+  overflow-x: auto;
+  border: var(--rule-bar) solid var(--color-rule);
+  background: var(--color-paper-2);
+  font-size: var(--text-label);
+  line-height: 1.5;
+  white-space: pre;
+}
+
+/* Loading, empty and error, for every region that loads data. */
+.state {
+  display: grid;
+  gap: var(--space-sm);
+  justify-items: start;
+  padding: var(--space-xl) var(--space-lg);
+  border: var(--rule-bar) solid var(--color-rule);
+}
+.state__title {
+  font-size: var(--text-head);
+  font-weight: 800;
+}
+.state--error {
+  border-color: var(--color-fail);
+}
+.skeleton {
+  display: grid;
+  gap: var(--space-sm);
+}
+.skeleton__row {
+  height: 44px;
+  background: var(--color-paper-2);
+}
+
+/* Motion is state: a new attempt flashes once, and a verdict lands once. Only on a live board. */
+[data-live="true"] .cell--sent {
+  animation: row-flash var(--dur-long) steps(2) 1;
+}
+[data-live="true"] .verdict__plate--landed {
+  animation: verdict-land var(--dur-short) var(--ease-out) 1;
+}
+@keyframes row-flash {
+  from {
+    opacity: 0.25;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes verdict-land {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-live="true"] .cell--sent,
+  [data-live="true"] .verdict__plate--landed {
+    animation: none;
+  }
+}
+
+/* A large projector resolution reads from further away, so everything scales up together. */
+@media (min-width: 100rem) and (min-height: 60rem) {
+  html {
+    font-size: 125%;
+  }
+}
+@media (max-width: 85rem), (max-height: 50rem) {
+  :root {
+    --text-verdict: 4.5rem;
+    --text-figure: 5.5rem;
+  }
+}
+/* A short screen, such as a 768p projector: each reason sits beside its plate, so the figure stays on screen. */
+@media (min-width: 60.01rem) and (max-height: 56rem) {
+  .board {
+    gap: var(--space-md);
+  }
+  .board__side .verdict {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--space-md);
+  }
+  .board__side .verdict__plate {
+    grid-row: 1 / span 2;
+  }
+  .board__side:last-child .verdict {
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-items: stretch;
+  }
+  .board__side:last-child .verdict__plate {
+    grid-column: 2;
+  }
+  .board__side:last-child .verdict__line,
+  .board__side:last-child .verdict__why {
+    grid-column: 1;
+  }
+  .verdict--pending .verdict__plate,
+  .verdict--none .verdict__plate {
+    min-height: 0;
+  }
+  .spine td {
+    padding-block: var(--space-xs);
+  }
+  .figure {
+    padding-block: 0;
+  }
+}
+@media (max-width: 60rem) {
+  :root {
+    --gutter: 16px;
+    --text-figure: 4rem;
+    --text-row: 1.125rem;
+  }
+  .board {
+    --tracks: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .figure {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .figure__label {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+  .spine td,
+  .spine th {
+    padding-inline: var(--space-xs);
+  }
+}
+@media (max-width: 40rem) {
+  :root {
+    --text-verdict: 3rem;
+  }
+  .board__sides {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-lg);
+  }
+  .board__side:last-child {
+    text-align: left;
+  }
+  .board__side:last-child .verdict {
+    justify-items: start;
+  }
+  .verdict__plate {
+    padding: var(--space-xs) var(--space-md);
+  }
+}

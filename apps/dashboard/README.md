@@ -1,5 +1,5 @@
 # @murphy/dashboard
 
-Murphy web dashboard (Next.js + Tailwind).
+The Murphy dashboard, on port 3100. See `docs/PHASE5.md` and `docs/design/direction.md`.
 
-Placeholder in phase 1. No code yet.
+`scripts/make-fixtures.ts` writes `test/fixtures` from real runs. Those files are never edited by hand.

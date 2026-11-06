@@ -1,0 +1,102 @@
+/* Wayfind. Night is the default; platform is the backup for a bright room (docs/design/direction.md). */
+:root {
+  color-scheme: dark;
+  --space-3xs: 2px;
+  --space-2xs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+  --space-4xl: 144px;
+
+  /* Fixed sizes, read from the back of a room. Nothing is smaller than the label. */
+  --text-label: 1rem;
+  --text-body: 1.125rem;
+  --text-row: 1.25rem;
+  --text-head: 1.75rem;
+  --text-verdict: 6rem;
+  --text-figure: 7.5rem;
+  --text-xs: var(--text-label);
+  --text-sm: var(--text-label);
+  --text-md: var(--text-body);
+  --text-lg: var(--text-row);
+  --text-xl: var(--text-head);
+  --text-2xl: var(--text-head);
+  --text-3xl: var(--text-head);
+  --text-display-s: var(--text-head);
+  --text-display: var(--text-head);
+  --text-section: var(--text-head);
+  --text-title: var(--text-row);
+  --text-lead: var(--text-body);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+  --container: 1680px;
+  --gutter: 40px;
+  --gap-columns: 24px;
+  --z-base: 1;
+  --z-raised: 10;
+  --z-sticky-nav: 300;
+
+  --color-paper: oklch(15% 0.012 262);
+  --color-paper-2: oklch(20% 0.014 262);
+  --color-paper-3: oklch(25% 0.014 262);
+  --color-ink: oklch(96% 0.005 250);
+  --color-ink-2: oklch(85% 0.008 250);
+  --color-muted: oklch(74% 0.016 255);
+  --color-rule: oklch(31% 0.014 262);
+  --color-border: oklch(96% 0.005 250);
+
+  /* Cobalt: what is live, and the primary action. */
+  --color-live: oklch(72% 0.15 264);
+  --color-accent: oklch(62% 0.2 264);
+  --color-accent-ink: oklch(13% 0.012 262);
+  --color-focus: oklch(72% 0.15 264);
+  /* Amber: figures, and errored. */
+  --color-figure: oklch(81% 0.16 82);
+  --color-amber: oklch(81% 0.16 82);
+  --color-amber-ink: oklch(13% 0.012 262);
+  /* Verdict marks only (waiver in docs/design/direction.md). */
+  --color-fail: oklch(66% 0.23 29);
+  --color-fail-ink: oklch(13% 0.012 262);
+  --color-pass: oklch(84% 0.17 160);
+  --color-errored-text: oklch(81% 0.16 82);
+
+  --font-display: "Chivo Mono", ui-monospace, monospace;
+  --font-body: var(--font-display);
+  --font-outlier: var(--font-body);
+  --radius-card: 0;
+  --radius-pill: 0;
+  --rule-hair: 1px;
+  --rule-bar: 2px;
+  --rule-verdict: 4px;
+  --control-height: 48px;
+  --tracking-display: -0.03em;
+  --display-weight: 800;
+}
+
+:root[data-theme="platform"] {
+  color-scheme: light;
+  --color-paper: oklch(95.5% 0.006 250);
+  --color-paper-2: oklch(91% 0.009 250);
+  --color-paper-3: oklch(99.5% 0.005 250);
+  --color-ink: oklch(16% 0.014 262);
+  --color-ink-2: oklch(29% 0.014 262);
+  --color-muted: oklch(47% 0.016 260);
+  --color-rule: oklch(80% 0.011 250);
+  --color-border: oklch(16% 0.014 262);
+  --color-live: oklch(51% 0.22 264);
+  --color-accent: oklch(51% 0.22 264);
+  --color-accent-ink: oklch(99.5% 0.003 250);
+  --color-focus: oklch(51% 0.22 264);
+  --color-figure: oklch(16% 0.014 262);
+  --color-fail: oklch(50% 0.2 29);
+  --color-fail-ink: oklch(99.5% 0.003 250);
+  --color-pass: oklch(45% 0.12 160);
+  --color-errored-text: oklch(16% 0.014 262);
+}

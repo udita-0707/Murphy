@@ -24,7 +24,13 @@ export function copyNumber(
   return copies.findIndex((d) => d.delivery_id === deliveryId) + 1;
 }
 
-/** Which faults to show on one attempt: a retry or the first copy of a duplicate is not itself the fault. */
+/** Which faults belong on one attempt: a retry or the first copy of a duplicate is not itself the fault. */
+export function faultsFor(kinds: readonly string[], copy: number, attemptNo: number): string[] {
+  return kinds.filter((kind) =>
+    kind === "duplicate" ? copy !== 1 : attemptNo === 1 && copy === 1,
+  );
+}
+
 export function faultsOnAttempt(
   deliveries: readonly LiveDelivery[],
   kinds: readonly string[],
@@ -32,8 +38,5 @@ export function faultsOnAttempt(
   deliveryId: string,
   attemptNo: number,
 ): string[] {
-  const isLaterCopy = copyNumber(deliveries, step, deliveryId) !== 1;
-  return kinds.filter((kind) =>
-    kind === "duplicate" ? isLaterCopy : attemptNo === 1 && !isLaterCopy,
-  );
+  return faultsFor(kinds, copyNumber(deliveries, step, deliveryId), attemptNo);
 }
