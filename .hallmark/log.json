@@ -2,6 +2,34 @@
  {
   "scope": "app",
   "shape": "app screen",
+  "theme": "squeeze",
+  "axes": "mid/geometric-sans/warm",
+  "hero": "split-screen comparison board",
+  "nav": "top bar of pills",
+  "footer": "none",
+  "imagery": "none, real run data",
+  "photos": [],
+  "entry": "none",
+  "fingerprint": "squeeze-blue-keycaps-spine",
+  "sections": [
+   "verdict plates",
+   "row spine",
+   "diverging figure"
+  ],
+  "signature": "shared row spine ending in the diverging figure, with keys that press",
+  "waived": [
+   "blue ground",
+   "keycaps from cobalt",
+   "verdict colours",
+   "mono for code"
+  ],
+  "prompt": "Murphy dashboard redone: cheerful, tactile, buttons that press like keys",
+  "date": "2026-11-06",
+  "mode": "build"
+ },
+ {
+  "scope": "app",
+  "shape": "app screen",
   "theme": "wayfind",
   "axes": "light/mono/cool",
   "hero": "split-screen comparison board",

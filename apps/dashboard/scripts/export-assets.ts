@@ -12,11 +12,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const styles = (file: string) => path.join(ROOT, "src/styles", file);
 const read = (file: string) => readFileSync(styles(file), "utf8");
 
-const fontFace = (weight: number) => {
-  const data = readFileSync(styles(`fonts/chivo-mono-latin-${weight}-normal.woff2`)).toString(
+const fontFace = (family: string, file: string, weight: number) => {
+  const data = readFileSync(styles(`fonts/${file}-latin-${weight}-normal.woff2`)).toString(
     "base64",
   );
-  return `@font-face { font-family: "Chivo Mono"; font-style: normal; font-weight: ${weight}; font-display: swap; src: url("data:font/woff2;base64,${data}") format("woff2"); }`;
+  return `@font-face { font-family: "${family}"; font-style: normal; font-weight: ${weight}; font-display: swap; src: url("data:font/woff2;base64,${data}") format("woff2"); }`;
 };
 
 const STAMP = read("globals.css").split("@import")[0]!.trim();
@@ -31,7 +31,9 @@ export function buildExportCss(): string {
     STAMP,
     read("tokens.css"),
     read("base.css"),
-    ...[400, 500, 800].map(fontFace),
+    fontFace("Gabarito", "gabarito", 800),
+    fontFace("Manrope", "manrope", 500),
+    fontFace("Manrope", "manrope", 700),
     read("report.css"),
     EXPORT_ONLY,
   ].join("\n");

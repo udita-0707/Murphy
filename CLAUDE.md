@@ -19,7 +19,7 @@ makes all final decisions.
 - pnpm workspaces + Turborepo
 - API: Express + Zod
 - Database: PostgreSQL 16 + Prisma (raw SQL only where needed, e.g. `ON CONFLICT`, `SKIP LOCKED`)
-- Dashboard: Next.js 15 (App Router), Tailwind 4, Hallmark's Wayfind theme (`docs/design/direction.md`)
+- Dashboard: Next.js 15 (App Router), Tailwind 4, Hallmark's Squeeze theme on a blue ground, with keycaps (`docs/design/direction.md`)
 - No Redis (ADR 016)
 - Tests: Vitest, Testcontainers (real Postgres), fast-check (property tests)
 - Local infra: Docker Compose (`infra/docker-compose.yml`)

@@ -1,4 +1,4 @@
-/* Wayfind. Night is the default; platform is the backup for a bright room (docs/design/direction.md). */
+/* Squeeze, on a blue ground, with keycap controls. Sky is the default; cream is the backup for a bright room. */
 :root {
   color-scheme: dark;
   --space-3xs: 2px;
@@ -12,13 +12,14 @@
   --space-3xl: 96px;
   --space-4xl: 144px;
 
-  /* Fixed sizes, read from the back of a room. Nothing is smaller than the label. */
-  --text-label: 1rem;
-  --text-body: 1.125rem;
-  --text-row: 1.25rem;
-  --text-head: 1.75rem;
-  --text-verdict: 6rem;
-  --text-figure: 7.5rem;
+  /* Sizes. Refined on a laptop; a large projector resolution scales the whole set up (report.css). */
+  --text-label: 0.9375rem;
+  --text-body: 1rem;
+  --text-row: 1.0625rem;
+  --text-head: 1.5rem;
+  --text-verdict: 4rem;
+  --text-figure: 5.5rem;
+  --text-statement: 4.25rem;
   --text-xs: var(--text-label);
   --text-sm: var(--text-label);
   --text-md: var(--text-body);
@@ -33,70 +34,120 @@
   --text-lead: var(--text-body);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --dur-micro: 120ms;
-  --dur-short: 220ms;
+  --dur-micro: 90ms;
+  --dur-short: 180ms;
   --dur-long: 420ms;
-  --container: 1680px;
+  --container: 1440px;
   --gutter: 40px;
   --gap-columns: 24px;
   --z-base: 1;
   --z-raised: 10;
   --z-sticky-nav: 300;
 
-  --color-paper: oklch(15% 0.012 262);
-  --color-paper-2: oklch(20% 0.014 262);
-  --color-paper-3: oklch(25% 0.014 262);
-  --color-ink: oklch(96% 0.005 250);
-  --color-ink-2: oklch(85% 0.008 250);
-  --color-muted: oklch(74% 0.016 255);
-  --color-rule: oklch(31% 0.014 262);
-  --color-border: oklch(96% 0.005 250);
+  --color-paper: oklch(43% 0.17 258);
+  --color-paper-2: oklch(50% 0.17 258);
+  --color-paper-3: oklch(34% 0.15 260);
+  --color-ink: oklch(99% 0.005 90);
+  --color-ink-2: oklch(96% 0.015 240);
+  --color-muted: oklch(92% 0.03 240);
+  --color-rule: oklch(56% 0.14 258);
+  --color-border: oklch(56% 0.14 258);
+  --color-card: oklch(97% 0.012 85);
+  --color-card-ink: oklch(26% 0.09 255);
+  --color-card-muted: oklch(42% 0.05 255);
+  --card-rule: oklch(82% 0.03 85);
+  --card-well: oklch(93% 0.018 85);
+  --card-focus: oklch(45% 0.15 255);
+  --card-fail: oklch(53% 0.2 29);
+  --card-fail-text: oklch(47% 0.18 29);
+  --card-field-edge: oklch(50% 0.05 255);
+  --card-key: oklch(98.5% 0.008 85);
+  --card-key-hover: oklch(99.5% 0.012 85);
+  --card-key-edge: oklch(78% 0.035 85);
 
-  /* Cobalt: what is live, and the primary action. */
-  --color-live: oklch(72% 0.15 264);
-  --color-accent: oklch(62% 0.2 264);
-  --color-accent-ink: oklch(13% 0.012 262);
-  --color-focus: oklch(72% 0.15 264);
-  /* Amber: figures, and errored. */
-  --color-figure: oklch(81% 0.16 82);
-  --color-amber: oklch(81% 0.16 82);
-  --color-amber-ink: oklch(13% 0.012 262);
-  /* Verdict marks only (waiver in docs/design/direction.md). */
-  --color-fail: oklch(66% 0.23 29);
-  --color-fail-ink: oklch(13% 0.012 262);
-  --color-pass: oklch(84% 0.17 160);
-  --color-errored-text: oklch(81% 0.16 82);
+  /* Peach: the keys. Sky: what is live. */
+  --color-accent: oklch(83% 0.115 56);
+  --color-accent-edge: oklch(64% 0.15 46);
+  --color-accent-hover: oklch(87% 0.105 60);
+  --color-accent-ink: oklch(28% 0.07 40);
+  --color-live: oklch(93% 0.065 225);
+  --color-focus: oklch(91% 0.14 98);
+  /* Sunshine: figures. */
+  --color-figure: oklch(91% 0.14 98);
+  --color-amber: oklch(86% 0.16 88);
+  --color-amber-ink: oklch(24% 0.05 80);
+  /* Verdict marks only. */
+  --color-fail: oklch(74% 0.19 33);
+  --color-fail-ink: oklch(20% 0.05 30);
+  --color-fail-text: oklch(89% 0.08 30);
+  --color-pass: oklch(88% 0.16 165);
+  --color-errored-text: oklch(86% 0.16 88);
 
-  --font-display: "Chivo Mono", ui-monospace, monospace;
-  --font-body: var(--font-display);
-  --font-outlier: var(--font-body);
-  --radius-card: 0;
-  --radius-pill: 0;
+  /* Keys: a face, and the edge that shows until it is pressed. */
+  --key-travel: 4px;
+  --color-key: oklch(54% 0.17 258);
+  --color-key-hover: oklch(58% 0.17 258);
+  --color-key-edge: oklch(30% 0.14 260);
+  --color-key-ink: oklch(99% 0.005 90);
+
+  --font-display: "Gabarito", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-outlier: var(--font-display);
+  --font-code: ui-monospace, "SF Mono", Menlo, monospace;
+  --radius-card: 20px;
+  --radius-control: 14px;
+  --radius-pill: 999px;
   --rule-hair: 1px;
   --rule-bar: 2px;
-  --rule-verdict: 4px;
-  --control-height: 48px;
-  --tracking-display: -0.03em;
+  --rule-verdict: 3px;
+  --control-height: 44px;
+  --shadow-card: 0 14px 32px -16px oklch(15% 0.06 257 / 0.6);
+  --shadow-pressed: inset 0 2px 4px oklch(15% 0.08 260 / 0.4);
+  --color-field-edge: oklch(82% 0.07 245);
+  --tracking-display: -0.025em;
   --display-weight: 800;
 }
 
 :root[data-theme="platform"] {
   color-scheme: light;
-  --color-paper: oklch(95.5% 0.006 250);
-  --color-paper-2: oklch(91% 0.009 250);
-  --color-paper-3: oklch(99.5% 0.005 250);
-  --color-ink: oklch(16% 0.014 262);
-  --color-ink-2: oklch(29% 0.014 262);
-  --color-muted: oklch(47% 0.016 260);
-  --color-rule: oklch(80% 0.011 250);
-  --color-border: oklch(16% 0.014 262);
-  --color-live: oklch(51% 0.22 264);
-  --color-accent: oklch(51% 0.22 264);
-  --color-accent-ink: oklch(99.5% 0.003 250);
-  --color-focus: oklch(51% 0.22 264);
-  --color-figure: oklch(16% 0.014 262);
-  --color-fail: oklch(50% 0.2 29);
-  --color-fail-ink: oklch(99.5% 0.003 250);
-  --color-pass: oklch(45% 0.12 160);
-  --color-errored-text: oklch(16% 0.014 262);
+  --color-paper: oklch(96.5% 0.015 85);
+  --color-paper-2: oklch(93.5% 0.024 85);
+  --color-paper-3: oklch(90.5% 0.03 85);
+  --color-ink: oklch(26% 0.09 255);
+  --color-ink-2: oklch(32% 0.08 255);
+  --color-muted: oklch(42% 0.05 255);
+  --color-rule: oklch(82% 0.03 85);
+  --color-border: oklch(82% 0.03 85);
+  --color-live: oklch(45% 0.15 255);
+  --color-focus: oklch(45% 0.15 255);
+  --color-figure: oklch(45% 0.15 255);
+  --color-amber: oklch(72% 0.17 70);
+  --color-fail: oklch(53% 0.2 29);
+  --color-fail-ink: oklch(99.5% 0.003 85);
+  --color-fail-text: oklch(47% 0.18 29);
+  --color-pass: oklch(42% 0.12 165);
+  --color-errored-text: oklch(26% 0.09 255);
+  --color-key: oklch(98.5% 0.008 85);
+  --color-key-hover: oklch(99.5% 0.012 85);
+  --color-key-edge: oklch(78% 0.035 85);
+  --color-key-ink: oklch(26% 0.09 255);
+  --shadow-card: 0 14px 32px -16px oklch(40% 0.05 80 / 0.45);
+  --shadow-pressed: inset 0 2px 4px oklch(40% 0.05 80 / 0.25);
+  --color-field-edge: oklch(50% 0.05 255);
+}
+
+/* The warm card is the same on both themes, so its contents take these. */
+.login__form {
+  --color-rule: var(--card-rule);
+  --color-paper-3: var(--card-well);
+  --color-ink: var(--color-card-ink);
+  --color-muted: var(--color-card-muted);
+  --color-focus: var(--card-focus);
+  --color-fail: var(--card-fail);
+  --color-fail-text: var(--card-fail-text);
+  --color-field-edge: var(--card-field-edge);
+  --color-key: var(--card-key);
+  --color-key-hover: var(--card-key-hover);
+  --color-key-edge: var(--card-key-edge);
+  --color-key-ink: var(--color-card-ink);
 }

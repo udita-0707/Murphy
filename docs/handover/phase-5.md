@@ -23,6 +23,10 @@ Nothing from the scope was cut. Two things changed from the plan, under "Changes
 
 Test counts: worker 275, dashboard 177, api 126, simulator 106, core 105, chaos 63, cli 35, control 35, demo-target 24, client 22, sdk 13, dev-receiver 10, demo-reset 6.
 
+## Design
+
+The first direction (Wayfind, a departure board in mono type) did not work for you, so it was replaced, by your brief: **cheerful, tactile, with buttons that press like keys**. It is now Hallmark's Squeeze theme, on a blue ground, with keycaps. Only the visual layer changed: features, logic and tests carried over. See `docs/design/direction.md`.
+
 ## By item
 
 | Item | What exists                                                                                                                         |
@@ -100,7 +104,7 @@ pnpm chaos --seed 2002 --out .chaos/phase5/seed-2002                            
 
 **Weaker than Hallmark asks:**
 
-- The render check cannot sign in, so signed-in pages (scenarios, log, chaos) had a source check and my own look at screenshots, not the rendered gates.
+- The render check cannot sign in, so signed-in pages (scenarios, log, chaos) had a source check and my own look at screenshots, with the API answered from fixtures in the browser, not the rendered gates.
 - Hallmark's reviews ask for a fresh context. I reviewed the screens myself.
 
 ## For the demo
