@@ -131,6 +131,16 @@ importers:
   packages/sdk: {}
 
   packages/simulator:
+    dependencies:
+      '@murphy/core':
+        specifier: workspace:*
+        version: link:../core
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       fast-check:
         specifier: ^4.3.0

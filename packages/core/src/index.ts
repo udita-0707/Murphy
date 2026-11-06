@@ -3,3 +3,4 @@ export * from "./retry.js";
 export * from "./canonical.js";
 export * from "./encryption.js";
 export * from "./address.js";
+export * from "./murphy-block.js";
