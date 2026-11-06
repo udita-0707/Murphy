@@ -1,7 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "concurrency": "5",
-  "globalEnv": ["DATABASE_URL", "REDIS_URL", "MURPHY_ENCRYPTION_KEY", "PORT"],
+  "globalEnv": ["DATABASE_URL", "MURPHY_ENCRYPTION_KEY", "PORT"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -23,7 +23,7 @@ export const RESET_STEPS: readonly Step[] = [
     args: [...COMPOSE, "down", "-v"],
   },
   {
-    label: "Start Postgres and Redis",
+    label: "Start Postgres",
     command: "docker",
     args: [...COMPOSE, "up", "-d", "--wait"],
   },

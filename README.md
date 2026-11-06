@@ -17,7 +17,7 @@ Requirements: Node 20+, pnpm 10, Docker.
 pnpm install
 cp .env.example .env          # set POSTGRES_PASSWORD (and DATABASE_URL to match),
                               # MURPHY_ENCRYPTION_KEY=$(openssl rand -base64 32), MURPHY_MODE=local
-pnpm infra:up                 # Postgres 16 (+ Redis 7, not used yet) on 127.0.0.1
+pnpm infra:up                 # Postgres 16 on 127.0.0.1
 pnpm db:migrate
 pnpm db:seed                  # prints a project API key once: mk_...
 pnpm dev                      # API on :3000 + delivery worker
@@ -155,6 +155,26 @@ pnpm -s murphy run packages/simulator/scenarios/booking-cancel-before-confirm.ya
 The `event_filter` keeps your ordinary events away from this endpoint. Localhost targets only work with `MURPHY_MODE=local`. The full contract is
 in [packages/sdk/README.md](packages/sdk/README.md) and [docs/run-report-schema.md](docs/run-report-schema.md).
 
+## Dashboard
+
+The demo, in one command:
+
+```sh
+pnpm demo:reset   # prints a new API key
+pnpm demo:stack   # builds the dashboard, then runs it with the API, demo target and control service
+```
+
+Open http://127.0.0.1:3100, paste the key, and choose **Run on both handlers** on a booking scenario: the same scenario on a naive and an idempotent handler, side by side,
+with one figure from the two reports, such as "Booking effect 2 vs 1". Each result downloads as one HTML file that makes no external requests.
+
+- `pnpm dev` also runs the dashboard, on the same port, without the chaos panel. Use one or the other, not both.
+- **Chaos** kills a worker, restarts Postgres, or makes the demo target answer 500, with a live count of what happened to every accepted event. It refuses to run outside
+  `MURPHY_MODE=local` with a local database (ADR 015). Retries are shortened on this machine, and the panel says so.
+- **Light room** switches to a light theme for a bright room.
+- GitHub login is optional. See `.env.example` and ADR 014.
+
+The design is in `docs/design/direction.md`. Do not edit `apps/dashboard/test/fixtures`, which come from real runs (`scripts/make-fixtures.ts`).
+
 ## Reliability evidence
 
 Murphy is tested by killing its workers, its API and its database while events are flowing, then
@@ -174,9 +194,6 @@ receivers must deduplicate on `webhook-id`.
 
 ## Status and scope notes
 
-- **Redis** is started by `pnpm infra:up` but not used by any code yet. It is a default cut;
-  the final decision (rate limits and per-endpoint concurrency, or drop it) is made in
-  phase 5.
 - **Retention** (deleting old attempts and payloads) is not built; it is planned for phase 6
   only if time allows, so local data grows until you run `pnpm demo:reset`.
 

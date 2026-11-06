@@ -82,6 +82,6 @@ describe("resetDemo", () => {
       () => {},
     );
     expect(status).toBe(3);
-    expect(ran).toEqual(["Stop infra and delete its volumes", "Start Postgres and Redis"]);
+    expect(ran).toEqual(["Stop infra and delete its volumes", "Start Postgres"]);
   });
 });

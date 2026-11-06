@@ -4,9 +4,8 @@
 #   docker compose --env-file .env -f infra/docker-compose.yml up -d --wait
 # or `pnpm infra:up`.
 #
-# Ports are published on 127.0.0.1 only. Host ports default to 54320/56379 so they do not
-# clash with a locally installed Postgres or Redis; override with MURPHY_PG_PORT /
-# MURPHY_REDIS_PORT.
+# Ports are published on 127.0.0.1 only. The host port defaults to 54320 so it does not clash
+# with a locally installed Postgres; override with MURPHY_PG_PORT.
 name: murphy
 
 services:
@@ -22,17 +21,6 @@ services:
       - murphy-pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  redis:
-    image: redis:7
-    command: ["redis-server", "--appendonly", "yes"]
-    ports:
-      - "127.0.0.1:${MURPHY_REDIS_PORT:-56379}:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
