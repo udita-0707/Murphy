@@ -257,3 +257,61 @@ body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-xs);
 }
+
+/* Delivery log. */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 44px;
+  font-size: var(--text-label);
+  font-weight: 500;
+  cursor: pointer;
+}
+.check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-accent);
+}
+.check input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.table a {
+  text-underline-offset: 0.16em;
+}
+.table a:hover {
+  color: var(--color-live);
+}
+.table a:focus-visible,
+.facts a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.state--succeeded,
+.state--active {
+  border: var(--rule-bar) solid var(--color-rule);
+  color: var(--color-ink);
+}
+.state--pending,
+.state--in_flight {
+  border: var(--rule-bar) solid var(--color-live);
+  color: var(--color-live);
+}
+.state--failed,
+.state--paused,
+.state--disabled,
+.state--cancelled {
+  border: var(--rule-bar) dashed var(--color-muted);
+  color: var(--color-ink-2);
+}
+.state--dead {
+  background: var(--color-ink);
+  border: var(--rule-bar) solid var(--color-ink);
+  color: var(--color-paper);
+}

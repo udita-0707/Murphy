@@ -7,7 +7,13 @@ import { setApiKey, useApiKey } from "@/lib/session";
 import { Loading } from "./states";
 import { ThemeToggle, type Theme } from "./theme-toggle";
 
-const LINKS = [{ href: "/scenarios", label: "Scenarios" }];
+const LINKS = [
+  { href: "/scenarios", label: "Scenarios" },
+  { href: "/endpoints", label: "Endpoints" },
+  { href: "/events", label: "Events" },
+  { href: "/deliveries", label: "Deliveries" },
+  { href: "/dlq", label: "Dead letters" },
+];
 
 export function AppShell({ theme, children }: { theme: Theme; children: ReactNode }) {
   const key = useApiKey();
