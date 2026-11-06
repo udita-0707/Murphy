@@ -5,8 +5,9 @@
 Murphy is a webhook delivery platform for hackathon teams, students and early-stage
 developers. You send an event with one API call; Murphy signs it (Standard Webhooks), delivers
 it to every matching endpoint, retries with backoff, parks permanent failures in a dead-letter
-queue, logs every attempt, and lets you replay anything. A fintech event simulator (Razorpay-,
-UPI- and KYC-style scenarios with injected faults) is coming in the next phase.
+queue, logs every attempt, and lets you replay anything. Its simulator fires realistic payment, UPI
+and booking webhooks at your handler, with duplicates, delays and reordering, and tells you whether it
+survived.
 
 ## Quickstart (local)
 
@@ -105,6 +106,55 @@ redirects are never followed. In hosted mode the API also rejects obviously unsa
 URLs when they are created or changed (`400 endpoint_url_not_allowed`): non-https, credentials
 in the URL, literal private, loopback or metadata IPs, and `localhost`.
 
+## Simulator: does your webhook handler survive?
+
+A scenario is a YAML file: entities, a timeline of events, faults and assertions. Murphy turns it into ordinary
+deliveries, so the real worker signs, sends, retries and logs them.
+
+```sh
+pnpm dev                 # terminal 1: API and worker
+pnpm demo:target         # terminal 2: a demo app with a naive and an idempotent handler
+export MURPHY_API_KEY=mk_...
+
+pnpm -s murphy run packages/simulator/scenarios/booking-duplicate-confirmation.yaml --target naive       # FAIL
+pnpm -s murphy run packages/simulator/scenarios/booking-duplicate-confirmation.yaml --target idempotent  # PASS
+```
+
+The library in `packages/simulator/scenarios` has 8 scenarios. Payloads are provider-_style_, not exact copies, and every simulated event is
+marked with a signed `_murphy` key.
+
+**Test your own handler.** Mount `murphyTarget()` before `express.json()`, and report your result through its state route:
+
+```ts
+import { murphyTarget } from "@murphy/sdk";
+
+app.use(
+  "/webhooks/murphy",
+  murphyTarget({
+    secret: process.env.MURPHY_WEBHOOK_SECRET!,
+    onEvent: (event) => myHandler(event.webhookId, event.type, event.payload),
+    state: () => ({
+      entities: {
+        [reservation.id]: { state: reservation.status, effects: { booking: 1 }, balance_minor: 0 },
+      },
+    }),
+  }),
+);
+```
+
+```sh
+# Create an endpoint for it once, and keep the secret it returns.
+curl -s -X POST localhost:3000/v1/endpoints -H "Authorization: Bearer $MURPHY_API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"url":"http://127.0.0.1:3001/webhooks/murphy","event_filter":["__murphy_simulation__"]}'
+
+pnpm -s murphy run packages/simulator/scenarios/booking-cancel-before-confirm.yaml \
+  --endpoint <id> --state-url http://127.0.0.1:3001/webhooks/murphy/state --label my-app
+```
+
+The `event_filter` keeps your ordinary events away from this endpoint. Localhost targets only work with `MURPHY_MODE=local`. The full contract is
+in [packages/sdk/README.md](packages/sdk/README.md) and [docs/run-report-schema.md](docs/run-report-schema.md).
+
 ## Reliability evidence
 
 Murphy is tested by killing its workers, its API and its database while events are flowing, then
@@ -142,8 +192,12 @@ apps/api              Express API
 apps/worker           delivery worker: fair claim, SSRF-safe sender, retries, reaper
 packages/core         signing, retry policy, canonical JSON
 packages/db           Prisma schema, migrations, repository layer, delivery queue
+packages/simulator    provider profiles, YAML scenarios, compiler, reports, scenario library
+packages/sdk          murphyTarget(), so your own handler can be tested by a scenario
+packages/cli          murphy run
 tools/dev-receiver    local receiver that verifies signatures and simulates failures
 tools/chaos           chaos harness, report and load baseline
+tools/demo-target     demo app with a naive and an idempotent handler
 docs/adr              architecture decision records
 docs/handover         phase handover notes
 ```

@@ -140,6 +140,37 @@ describe("murphy run, end to end", () => {
     expect(output).not.toMatch(/mk_wrong/);
   });
 
+  it("the API installs the built-in library at startup, and a run can use it directly", async () => {
+    const headers = {
+      authorization: `Bearer ${stack.apiKey}`,
+      "content-type": "application/json",
+    };
+    const listed = await fetch(`${stack.apiUrl}/v1/scenarios`, { headers });
+    const { data } = (await listed.json()) as {
+      data: { id: string; slug: string; builtin: boolean }[];
+    };
+    const builtins = data.filter((s) => s.builtin);
+    expect(builtins).toHaveLength(8);
+
+    const created = await fetch(`${stack.apiUrl}/v1/endpoints`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ url: `${stack.targetUrl}/idempotent` }),
+    });
+    const endpoint = (await created.json()) as { id: string };
+    const started = await fetch(`${stack.apiUrl}/v1/runs`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        scenario_id: builtins.find((s) => s.slug === "payment-duplicate-captured")!.id,
+        endpoint_id: endpoint.id,
+        state_url: `${stack.targetUrl}/idempotent/state`,
+      }),
+    });
+    expect(started.status).toBe(202);
+    await fetch(`${stack.apiUrl}/v1/endpoints/${endpoint.id}`, { method: "DELETE", headers });
+  });
+
   describe("your own handler, as the README shows it", () => {
     /** A small handler of the reader's own, mounted with murphyTarget(). */
     async function ownHandler(dedupe: boolean) {

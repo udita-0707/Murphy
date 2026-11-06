@@ -34,42 +34,46 @@ apps/
 packages/
   core/         @murphy/core: signing, retry policy, canonical JSON hashing
   db/           @murphy/db: Prisma schema, migrations, client, repository layer, delivery queue
-  simulator/    @murphy/simulator (placeholder)
-  sdk/          @murphy/sdk (placeholder)
-  cli/          @murphy/cli, bin "murphy" (placeholder)
+  simulator/    @murphy/simulator: provider profiles, YAML scenarios, compiler, reports, library
+  sdk/          @murphy/sdk: murphyTarget() middleware for handlers under test
+  cli/          @murphy/cli: `pnpm -s murphy run`
 tools/
   dev-receiver/ @murphy/dev-receiver: local receiver that verifies signatures, simulates failures
   demo-reset/   @murphy/demo-reset: `pnpm demo:reset` (refuses outside local mode / localhost DB)
   chaos/        @murphy/chaos: `pnpm chaos` and `pnpm load`, real processes, faults, report
+  demo-target/  @murphy/demo-target: `pnpm demo:target`, a naive and an idempotent handler
 infra/          docker-compose and other infrastructure
 docs/
   BRIEF.md      problem brief, PRD and tech spec
   adr/          architecture decision records
   handover/     phase handover notes
   chaos-report.md  generated evidence for "no accepted event is lost" (phase 3)
+  run-report-schema.md  run report v1, the `_murphy` block and the target state contract
 ```
 
 ## Commands
 
 Run from the repo root.
 
-| Command           | What it does                                                          |
-| ----------------- | --------------------------------------------------------------------- |
-| `pnpm install`    | Install dependencies                                                  |
-| `pnpm infra:up`   | Start Postgres 16 and Redis 7 (reads credentials from `.env`)         |
-| `pnpm infra:down` | Stop them (data stays in the `murphy-pgdata` volume)                  |
-| `pnpm dev`        | Run the API (on `PORT`, default 3000) and the worker in watch mode    |
-| `pnpm receiver`   | Dev receiver on :4242 (`RECEIVER_SECRET=whsec_...`, `--fail N`)       |
-| `pnpm build`      | Build all packages                                                    |
-| `pnpm test`       | Run all tests (integration tests need Docker for Testcontainers)      |
-| `pnpm lint`       | ESLint across the workspace                                           |
-| `pnpm typecheck`  | `tsc --noEmit` across the workspace                                   |
-| `pnpm format`     | Prettier write                                                        |
-| `pnpm db:migrate` | Apply Prisma migrations (`prisma migrate deploy`) to `DATABASE_URL`   |
-| `pnpm db:seed`    | Create a project and print its API key once                           |
-| `pnpm demo:reset` | Wipe and re-seed the local DB before every demo (local mode only)     |
-| `pnpm chaos`      | Chaos run, needs Docker (`--seed N`, `--sabotage`, `--out`)           |
-| `pnpm load`       | Local ingestion baseline, needs Docker (`--seconds`, `--connections`) |
+| Command            | What it does                                                           |
+| ------------------ | ---------------------------------------------------------------------- |
+| `pnpm install`     | Install dependencies                                                   |
+| `pnpm infra:up`    | Start Postgres 16 and Redis 7 (reads credentials from `.env`)          |
+| `pnpm infra:down`  | Stop them (data stays in the `murphy-pgdata` volume)                   |
+| `pnpm dev`         | Run the API (on `PORT`, default 3000) and the worker in watch mode     |
+| `pnpm receiver`    | Dev receiver on :4242 (`RECEIVER_SECRET=whsec_...`, `--fail N`)        |
+| `pnpm build`       | Build all packages                                                     |
+| `pnpm test`        | Run all tests (integration tests need Docker for Testcontainers)       |
+| `pnpm lint`        | ESLint across the workspace                                            |
+| `pnpm typecheck`   | `tsc --noEmit` across the workspace                                    |
+| `pnpm format`      | Prettier write                                                         |
+| `pnpm db:migrate`  | Apply Prisma migrations (`prisma migrate deploy`) to `DATABASE_URL`    |
+| `pnpm db:seed`     | Create a project and print its API key once                            |
+| `pnpm demo:reset`  | Wipe and re-seed the local DB before every demo (local mode only)      |
+| `pnpm chaos`       | Chaos run, needs Docker (`--seed N`, `--sabotage`, `--out`)            |
+| `pnpm load`        | Local ingestion baseline, needs Docker (`--seconds`, `--connections`)  |
+| `pnpm demo:target` | Demo target on :4343 (`/naive`, `/idempotent`), localhost only         |
+| `pnpm -s murphy`   | `murphy run <file> --target naive\|idempotent`, needs `MURPHY_API_KEY` |
 
 `pnpm test` caches through Turborepo. To really re-run tests, use `pnpm exec turbo run test --force`.
 
@@ -96,14 +100,20 @@ Copy `.env.example` to `.env` and fill it in (set a real `POSTGRES_PASSWORD` and
 
 - Phase 1 (done): API, core, db. Phase 2 (done): worker, retries, reaper, DLQ, replay, SSRF
   guard, dev receiver. Phase 3 (done): reliability proof with property tests, chaos harness and
-  report. Phase 4 is the simulator.
+  report. Phase 4 (done): simulator, `murphyTarget()`, `murphy run`. Phase 5 is the dashboard.
+- The simulator has no delivery path of its own: a run only writes `events` and `deliveries` rows, and
+  the delivery code has no simulator logic (ADR 011). Keep it that way.
+- A run is `errored`, proving nothing, if a planned fault did not happen. Never report that as a pass.
+- The run report is versioned (`docs/run-report-schema.md`, ADR 012). Changing a field's meaning needs a new
+  version.
 - `WORKER_RETRY_SCHEDULE_MS` is for local chaos runs only; the worker refuses it outside
   `MURPHY_MODE=local` (ADR 010).
 - A disable stops new claims only. A delivery already `in_flight` is still sent (ADR 009).
 - `MURPHY_MODE` must default to `hosted`. Local development sets `MURPHY_MODE=local` in `.env`.
 - Delivery is at-least-once; receivers deduplicate on `webhook-id` (ADR 001, 006, 007).
-- The partial index `deliveries_pending_project_due_idx` exists only in migrations; delete
-  any `DROP INDEX` for it that `prisma migrate dev` generates (ADR 004).
+- The partial indexes `deliveries_pending_project_due_idx` and `scenarios_builtin_slug_key` exist only in
+  migrations; delete any `DROP INDEX` for them that `prisma migrate dev` generates (ADR 004).
+- Do not run `pnpm install` or `prisma generate` while tests run: replacing Prisma's engine breaks them.
 - Redis: default cut, final decision in phase 5. Do not remove it from compose or docs yet.
 - Retention job (brief 3.3): not built; phase 6 only if time allows.
 - Cut from v1: KYC provider, FIFO ordering (`endpoints.ordering`), endpoint auto-disable,
