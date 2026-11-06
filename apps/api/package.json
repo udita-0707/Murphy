@@ -14,9 +14,10 @@
   "dependencies": {
     "@murphy/core": "workspace:*",
     "@murphy/db": "workspace:*",
+    "@murphy/simulator": "workspace:*",
+    "dotenv": "^16.6.0",
     "express": "^5.1.0",
-    "zod": "^4.1.0",
-    "dotenv": "^16.6.0"
+    "zod": "^4.1.0"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^11.7.0",

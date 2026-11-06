@@ -69,7 +69,7 @@ export function endpointsRouter(repo: Repository, encryptionKey: Buffer, mode: M
  * userinfo, and literal private, loopback or metadata addresses. Hostnames are not resolved,
  * so DNS that is not live yet does not block creation; delivery re-checks every attempt.
  */
-function assertUrlAllowed(url: string, mode: MurphyMode): void {
+export function assertUrlAllowed(url: string, mode: MurphyMode): void {
   const check = checkEndpointUrl(url, mode);
   if (!check.ok) {
     throw new ApiError(400, "endpoint_url_not_allowed", `${check.message} (${check.problem})`);

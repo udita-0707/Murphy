@@ -7,6 +7,8 @@ import { getRequestId, requestId } from "./middleware/request-id.js";
 import { bulkReplayRouter, deliveriesRouter, dlqRouter } from "./routes/deliveries.js";
 import { endpointsRouter } from "./routes/endpoints.js";
 import { eventsRouter } from "./routes/events.js";
+import { runsRouter } from "./routes/runs.js";
+import { scenariosRouter } from "./routes/scenarios.js";
 
 export interface AppDeps {
   repo: Repository;
@@ -42,6 +44,8 @@ export function createApp({
   v1.use("/deliveries", deliveriesRouter(repo));
   v1.use("/replay", bulkReplayRouter(repo));
   v1.use("/dlq", dlqRouter(repo));
+  v1.use("/scenarios", scenariosRouter(repo));
+  v1.use("/runs", runsRouter(repo, mode));
   app.use("/v1", v1);
 
   app.use((_req, _res, next) => {

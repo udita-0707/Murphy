@@ -1,4 +1,9 @@
-import { RETRY_SCHEDULE_MS, type MurphyBlock, type MurphyForcedResponse } from "@murphy/core";
+import {
+  canonicalHash,
+  RETRY_SCHEDULE_MS,
+  type MurphyBlock,
+  type MurphyForcedResponse,
+} from "@murphy/core";
 import type { Effects, JsonObject } from "./model.js";
 import { type Scenario, type ScenarioAssertion, type ScenarioStep } from "./scenario.js";
 import { getProvider, simulate } from "./simulate.js";
@@ -228,5 +233,36 @@ export function compile(scenario: Scenario, options: CompileOptions): RunPlan {
     })),
     assertions: scenario.assertions,
     deadline_offset_ms: Math.round(latest) + DEADLINE_GRACE_MS,
+  };
+}
+
+/** What the database needs to start this plan. Faults are already in the rows' due times and bodies. */
+export function planToRunInput(
+  plan: RunPlan,
+  target: {
+    scenarioId: string;
+    endpointId: string;
+    targetLabel: string | null;
+    stateUrl: string | null;
+  },
+) {
+  return {
+    id: plan.run_id,
+    ...target,
+    seed: plan.seed,
+    plan: plan as unknown as JsonObject,
+    deadlineOffsetMs: plan.deadline_offset_ms,
+    entities: plan.entities.map((e) => ({
+      kind: e.kind,
+      externalId: e.provider_id,
+      state: e.expected.state,
+    })),
+    steps: plan.steps.map((step) => ({
+      eventType: step.emit,
+      payload: step.payload,
+      idempotencyKey: `sim:${plan.run_id}:${step.id}`,
+      requestHash: canonicalHash({ type: step.emit, payload: step.payload }),
+      dueOffsetsMs: step.due_offsets_ms,
+    })),
   };
 }
